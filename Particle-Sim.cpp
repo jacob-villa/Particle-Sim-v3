@@ -97,9 +97,15 @@ public:
 
 	Sprite(float x, float y, float speed) : x(x), y(y), speed(speed) {}
 
-	void UpdatePosition(float deltaTime) {
-		// Update position based on user input
-		// This is a placeholder for actual movement logic
+	void Move(float dx, float dy) {
+		x += dx;
+		y += dy;
+
+		// Ensure the sprite does not go over the border
+		if (x < 0) x = 0;
+		if (x > 1280) x = 1280;
+		if (y < 0) y = 0;
+		if (y > 720) y = 720;
 	}
 };
 
@@ -276,7 +282,7 @@ int main(int argc, char *argv) {
 		else {
 			ImGui::Text("Particle Physics Simulator");
 			ImGui::Text("STDISCM - S12");
-			ImGui::Text("Joshua Ejercito and Jacob Villa");
+			ImGui::Text("Joshua Ejercito, Ryan Go, Naton Morana, Jacob Villa");
 		}
 
 		ImGui::End();
@@ -399,9 +405,25 @@ int main(int argc, char *argv) {
 			currentMode = EXPLORER;
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 100.0f); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 250.0f); // initial position and speed adjust here n lng
 				}
-				explorerSprite->UpdatePosition(deltaTime);
+				//explorerSprite->UpdatePosition(deltaTime);
+			}
+		}
+
+		if (currentMode == EXPLORER && explorerSprite) {
+			float moveSpeed = explorerSprite->speed * deltaTime;
+			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+				explorerSprite->Move(0, -moveSpeed); // Move up
+			}
+			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+				explorerSprite->Move(-moveSpeed, 0); // Move left
+			}
+			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+				explorerSprite->Move(0, moveSpeed); // Move down
+			}
+			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+				explorerSprite->Move(moveSpeed, 0); // Move right
 			}
 		}
 		
