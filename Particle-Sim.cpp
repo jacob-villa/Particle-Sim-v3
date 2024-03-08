@@ -547,11 +547,16 @@ int main(int argc, char *argv) {
 				//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 			}
 		}
-		/*
+		
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
-		ImGui::Dummy(ImVec2(0, 55));
+		if (ImGui::Button("Developer mode")) {
 
+		}
+		if (ImGui::Button("Explorer mode")) {
+
+		}
+		/*
 		ImGui::Text("Add Walls");
 		ImGui::Dummy(ImVec2(0, 10));
 
