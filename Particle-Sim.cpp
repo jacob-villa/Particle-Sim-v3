@@ -257,11 +257,16 @@ int main(int argc, char *argv) {
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
 		ImGui::Dummy(ImVec2(0, 20));
-
-		if (ImGui::Button("Reset Particles")) {
-			particles.clear();
+		if (currentMode == DEVELOPER)
+		{ 
+			if (ImGui::Button("Reset Particles")) {
+				particles.clear();
+			}
 		}
-
+		else
+		{
+			ImGui::Text("Buttons disabled in Explorer mode");
+		}
 		ImGui::Dummy(ImVec2(0, 20));
 		ImGui::Text("Current FPS: %.f", currentFramerate);
 		ImGui::Text("Number of Particles: %d", particles.size());
@@ -310,36 +315,40 @@ int main(int argc, char *argv) {
 		ImGui::InputFloat("Velocity (pixels/sec)", &newParticleVelocity);
 
 		ImGui::Dummy(ImVec2(0, 10));
+		if (currentMode == DEVELOPER) {
+			if (ImGui::Button("Add Particle")) {
 
-		if (ImGui::Button("Add Particle")) {
-			
-			//std::cout << "New particle velocity: " << newParticleVelocity << std::endl; // Debug output
+				//std::cout << "New particle velocity: " << newParticleVelocity << std::endl; // Debug output
 
-			if (newParticleX >= 0 && newParticleX <= 1280 &&
-				newParticleY >= 0 && newParticleY <= 720 &&
-				newParticleAngle >= 0.0 && newParticleAngle <= 360.0) {
-				particles.emplace_back(newParticleX, newParticleY, newParticleAngle, newParticleVelocity);
-			}
-			else {
-				showErrorPopup = true;
-			}
-		}
-
-		ImGui::SameLine();
-		if (ImGui::Button("Spawn Random Particle")) {
-			SpawnRandomParticle();
-		}
-
-		if (showErrorPopup) {
-			ImGui::OpenPopup("Invalid Input");
-			if (ImGui::BeginPopupModal("Invalid Input", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::Text("The input values for X and Y coordinates must be within the dimensions of the black panel (0-1280,   0-720).\nThe angle must be between   0 and   360 degrees.");
-				if (ImGui::Button("OK")) {
-					ImGui::CloseCurrentPopup();
-					showErrorPopup = false;
+				if (newParticleX >= 0 && newParticleX <= 1280 &&
+					newParticleY >= 0 && newParticleY <= 720 &&
+					newParticleAngle >= 0.0 && newParticleAngle <= 360.0) {
+					particles.emplace_back(newParticleX, newParticleY, newParticleAngle, newParticleVelocity);
 				}
-				ImGui::EndPopup();
+				else {
+					showErrorPopup = true;
+				}
 			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Spawn Random Particle")) {
+				SpawnRandomParticle();
+			}
+
+			if (showErrorPopup) {
+				ImGui::OpenPopup("Invalid Input");
+				if (ImGui::BeginPopupModal("Invalid Input", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::Text("The input values for X and Y coordinates must be within the dimensions of the black panel (0-1280,   0-720).\nThe angle must be between   0 and   360 degrees.");
+					if (ImGui::Button("OK")) {
+						ImGui::CloseCurrentPopup();
+						showErrorPopup = false;
+					}
+					ImGui::EndPopup();
+				}
+			}
+		}
+		else {
+			ImGui::Text("Buttons disabled in Explorer mode");
 		}
 
 		ImGui::Dummy(ImVec2(0, 55));
@@ -365,20 +374,21 @@ int main(int argc, char *argv) {
 		ImGui::InputFloat("End Velocity", &endVelocity);
 
 		ImGui::Dummy(ImVec2(0, 10));
+		if (currentMode == DEVELOPER)
+		{
+			if (ImGui::Button("Add Batch Particles")) {
+				float dX = (endX - startX) / (numParticles - 1);
+				float dY = (endY - startY) / (numParticles - 1);
+				float dAngle = (endAngle - startAngle) / (numParticles - 1);
+				float dVelocity = (endVelocity - startVelocity) / (numParticles - 1);
 
-		if (ImGui::Button("Add Batch Particles")) {
-			float dX = (endX - startX) / (numParticles - 1);
-			float dY = (endY - startY) / (numParticles - 1);
-			float dAngle = (endAngle - startAngle) / (numParticles - 1);
-			float dVelocity = (endVelocity - startVelocity) / (numParticles - 1);
+				for (int i = 0; i < numParticles; ++i) {
+					float x = startX + i * dX;
+					float y = startY + i * dY;
+					float angle = startAngle + i * dAngle;
+					float velocity = startVelocity + i * dVelocity;
 
-			for (int i = 0; i < numParticles; ++i) {
-				float x = startX + i * dX;
-				float y = startY + i * dY;
-				float angle = startAngle + i * dAngle;
-				float velocity = startVelocity + i * dVelocity;
-				
-				switch (particleVariationType) {
+					switch (particleVariationType) {
 					case 0: // Varying X and Y
 						particles.emplace_back(x, y, startAngle, startVelocity);
 						break;
@@ -389,11 +399,16 @@ int main(int argc, char *argv) {
 					case 2: // Varying Velocity
 						particles.emplace_back(startX, startY, startAngle, velocity);
 						break;
+					}
+					//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 				}
-				//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 			}
+
+
 		}
-		
+		else {
+			ImGui::Text("Buttons disabled in Explorer mode");
+		}
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
 		if (ImGui::Button("Developer mode")) {
