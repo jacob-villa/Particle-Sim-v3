@@ -251,10 +251,13 @@ int main(int argc, char *argv) {
 
 		ImGui::Begin("Color Pickers", nullptr, ImGuiWindowFlags_NoDecoration);
 
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
+
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Button, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
+
+
 
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
@@ -305,10 +308,10 @@ int main(int argc, char *argv) {
 		ImGui::Text("Add Individual Particle");
 		ImGui::Dummy(ImVec2(0, 10));
 
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f)); 
-		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Button, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
 		ImGui::PushItemWidth(175.0f);
 
 		ImGui::InputFloat("X Coordinate", &newParticleX);
