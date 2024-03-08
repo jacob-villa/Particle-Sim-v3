@@ -146,6 +146,8 @@ static void DrawElements() {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
 		draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // Draw the sprite as a red circle
 	}
+
+
 }
 
 void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
@@ -280,7 +282,7 @@ int main(int argc, char *argv) {
 
 			ImGui::Text("Particle Physics Simulator");
 			ImGui::Text("STDISCM - S12");
-			ImGui::Text("Joshua Ejercito, Ryan Go, Naton Morana, Jacob Villa");
+			ImGui::Text("Joshua Ejercito, Ryan Go, Anton Morana, Jacob Villa");
 
 			ImGui::PopFont();
 		}
