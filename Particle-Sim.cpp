@@ -99,7 +99,7 @@ public:
 
 	void Move(float dx, float dy) {
 		x += dx;
-		y += dy;
+		y -= dy;
 
 		// Ensure the sprite does not go over the border
 		if (x < 0) x = 0;
@@ -413,16 +413,16 @@ int main(int argc, char *argv) {
 
 		if (currentMode == EXPLORER && explorerSprite) {
 			float moveSpeed = explorerSprite->speed * deltaTime;
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 				explorerSprite->Move(0, -moveSpeed); // Move up
 			}
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
 				explorerSprite->Move(-moveSpeed, 0); // Move left
 			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 				explorerSprite->Move(0, moveSpeed); // Move down
 			}
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
 				explorerSprite->Move(moveSpeed, 0); // Move right
 			}
 		}
