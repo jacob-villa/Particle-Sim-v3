@@ -13,6 +13,8 @@
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 using namespace std;
 
@@ -27,6 +29,40 @@ enum Mode {
 };
 
 Mode currentMode = DEVELOPER; // Default mode
+
+static GLuint LoadTexture(const char* path) {
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, nrComponents;
+	unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
+	if (data) {
+		GLenum format;
+		if (nrComponents == 1)
+			format = GL_RED;
+		else if (nrComponents == 3)
+			format = GL_RGB;
+		else if (nrComponents == 4)
+			format = GL_RGBA;
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+		// Set the texture wrapping/filtering options (on the currently bound texture object)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else {
+		std::cout << "Texture failed to load at path: " << path << std::endl;
+		stbi_image_free(data);
+	}
+
+	return textureID;
+}
 
 static float getDistance(float x1, float y1, float x2, float y2) {
 	return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
@@ -94,8 +130,9 @@ class Sprite {
 public:
 	float x, y;
 	float speed;
+	GLuint textureID;
 
-	Sprite(float x, float y, float speed) : x(x), y(y), speed(speed) {}
+	Sprite(float x, float y, float speed, GLuint textureID) : x(x), y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -144,7 +181,10 @@ static void DrawElements() {
 
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
-		draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // Draw the sprite as a red circle
+		//draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // Draw the sprite as a red circle
+		//draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), pos, ImVec2(pos.x + 10, pos.y + 10));
+		ImVec2 size = ImVec2(100, 100); // adjust
+		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
 	}
 
 
@@ -212,6 +252,8 @@ int main(int argc, char *argv) {
 	double currentFramerate = 0.0;
 	double lastUIUpdateTime = 0.0;
 
+	GLuint explorerTexture = LoadTexture("squareman.jpg");
+
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
 		frameTime = currentTime - lastUpdateTime;
@@ -251,13 +293,10 @@ int main(int argc, char *argv) {
 
 		ImGui::Begin("Color Pickers", nullptr, ImGuiWindowFlags_NoDecoration);
 
-
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(128.0f / 255.0f, 0.0f, 128.0f / 255.0f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_Button, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, currentMode == EXPLORER ? ImVec4(0.0f, 0.0f, 1.0f, 1.0f) : ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
-
-
 
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
@@ -425,7 +464,7 @@ int main(int argc, char *argv) {
 			currentMode = EXPLORER;
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 250.0f); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 250.0f, explorerTexture); // initial position and speed adjust here n lng
 				}
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
@@ -495,6 +534,12 @@ int main(int argc, char *argv) {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		glfwSwapInterval(0); // Disable VSync
+	}
+
+	if (explorerSprite) {
+		glDeleteTextures(1, &explorerSprite->textureID);
+		delete explorerSprite;
+		explorerSprite = nullptr;
 	}
 
 	ImGui_ImplOpenGL3_Shutdown();
