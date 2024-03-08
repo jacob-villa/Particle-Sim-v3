@@ -21,6 +21,7 @@ float PI = 3.14159265359;
 ImVec4 wallColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
 ImVec4 particleColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
+/*
 class Wall {
 public:
 	float startX, startY, endX, endY;
@@ -38,7 +39,7 @@ public:
 };
 
 std::vector<Wall> walls;
-
+*/
 static float getDistance(float x1, float y1, float x2, float y2) {
 	return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
@@ -52,7 +53,7 @@ static float pointLineDistance(float px, float py, float x1, float y1, float x2,
 
 	return sqrt((closestX - px) * (closestX - px) + (closestY - py) * (closestY - py));
 }
-
+/*
 static float reflectAngle(Wall wall, float angle) {
 	float wallAngle = atan2(wall.endY - wall.startY, wall.endX - wall.startX) * 180.0 / PI;
 	float reflectedAngle = 2 * wallAngle - angle;
@@ -61,7 +62,7 @@ static float reflectAngle(Wall wall, float angle) {
 
 	return reflectedAngle;
 }
-
+*/
 class Particle {
 public:
 	float x, y;
@@ -84,8 +85,9 @@ public:
 		float threshold = velocity > 500 ? 10.0f : 3.0f;
 
 		bool collisionDetected = false;
-		Wall* collidedWall = nullptr;
+		//Wall* collidedWall = nullptr;
 
+		/*
 		for (auto& wall : walls) {
 			float lineDistance = pointLineDistance(newX, newY, wall.startX, wall.startY, wall.endX, wall.endY);
 			float wallStartDistance = getDistance(newX, newY, wall.startX, wall.startY);
@@ -104,7 +106,7 @@ public:
 				}
 			}
 		}
-
+		
 		if (collisionDetected) {
 			std::random_device rd;
 			std::mt19937 gen(rd());
@@ -129,7 +131,7 @@ public:
 			newX = x + dx;
 			newY = y + dy;
 		}
-
+		*/
 		x = newX;
 		y = newY;
 
@@ -165,7 +167,7 @@ static void SpawnRandomParticle() {
 
 	float x, y;
 	bool validPosition = false;
-
+	/*
 	while (!validPosition) {
 		x = disX(gen);
 		y = disY(gen);
@@ -178,13 +180,15 @@ static void SpawnRandomParticle() {
 			}
 		}
 	}
-
+	*/
+	x = disX(gen);
+	y = disY(gen);
 	float angle = disAngle(gen);
 	float velocity = disVelocity(gen);
 
 	particles.emplace_back(x, y, angle, velocity);
 }
-
+/*
 static void SpawnRandomWall() {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -222,7 +226,7 @@ static void SpawnRandomWall() {
 
 	walls.emplace_back(startX, startY, endX, endY);	
 }
-
+*/
 static void GLFWErrorCallback(int error, const char* description) {
 	std::cout << "GLFW Error " <<  description << " code: " << error << std::endl;
 }
@@ -235,10 +239,11 @@ static void DrawElements() {
 
 		draw_list->AddCircleFilled(pos, 1.5f, ImColor(particleColor));
 	}
-
+	/*
 	for (auto& wall : walls) {
 		wall.DrawWall();
 	}
+	*/
 }
 
 void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
@@ -286,8 +291,10 @@ int main(int argc, char *argv) {
 	float startAngle = 0.0f, endAngle = 0.0f;
 	float startVelocity = 0.0f, endVelocity = 0.0f;
 
+	/*
 	float wallStartX = 0.0f, wallStartY = 0.0f;
 	float wallEndX = 0.0f, wallEndY = 0.0f;
+	*/
 
 	double frameTime = 0.0; // Time since the last frame
 	double targetFrameTime = 1.0 / 60.0; // Target time per frame (60 FPS)
@@ -350,7 +357,7 @@ int main(int argc, char *argv) {
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f));
 
-		ImGui::ColorEdit3("Wall Color", (float*)&wallColor);
+		//ImGui::ColorEdit3("Wall Color", (float*)&wallColor);
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
 		ImGui::Dummy(ImVec2(0, 20));
@@ -358,16 +365,16 @@ int main(int argc, char *argv) {
 		if (ImGui::Button("Reset Particles")) {
 			particles.clear();
 		}
-
+		/*
 		ImGui::SameLine();
 		if (ImGui::Button("Clear Walls")) {
 			walls.clear();
 		}
-
+		*/
 		ImGui::Dummy(ImVec2(0, 20));
 		ImGui::Text("Current FPS: %.f", currentFramerate);
 		ImGui::Text("Number of Particles: %d", particles.size());
-		ImGui::Text("Number of Walls: %d", walls.size());
+		//ImGui::Text("Number of Walls: %d", walls.size());
 		
 		ImGui::PopStyleColor(4);
 
@@ -416,8 +423,9 @@ int main(int argc, char *argv) {
 
 		if (ImGui::Button("Add Particle")) {
 			
-
+			/*
 			bool insideWall = false;
+			
 			Wall* collidingWall = nullptr;
 
 			for (auto& wall : walls) {
@@ -437,7 +445,7 @@ int main(int argc, char *argv) {
 					newParticleX = collidingWall->startX - 1.0f;
 				}
 			}
-
+			*/
 			//std::cout << "New particle velocity: " << newParticleVelocity << std::endl; // Debug output
 
 			if (newParticleX >= 0 && newParticleX <= 1280 &&
@@ -502,7 +510,7 @@ int main(int argc, char *argv) {
 				float y = startY + i * dY;
 				float angle = startAngle + i * dAngle;
 				float velocity = startVelocity + i * dVelocity;
-
+				/*
 				bool insideWall = false;
 				Wall* collidingWall = nullptr;
 
@@ -523,7 +531,7 @@ int main(int argc, char *argv) {
 						x = collidingWall->startX - 1.0f;
 					}
 				}
-
+				*/
 				switch (particleVariationType) {
 					case 0: // Varying X and Y
 						particles.emplace_back(x, y, startAngle, startVelocity);
@@ -539,7 +547,7 @@ int main(int argc, char *argv) {
 				//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 			}
 		}
-
+		/*
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
 		ImGui::Dummy(ImVec2(0, 55));
@@ -564,6 +572,7 @@ int main(int argc, char *argv) {
 		if (ImGui::Button("Spawn Random Wall")) {
 			SpawnRandomWall();
 		}
+		*/
 		ImGui::PopStyleColor(4);
 
 		ImGui::End();
