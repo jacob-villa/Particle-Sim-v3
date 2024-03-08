@@ -46,7 +46,7 @@ static GLuint LoadTexture(const char* path) {
 			format = GL_RGBA;
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data); //ignore the format warning ty
 
 		// Set the texture wrapping/filtering options (on the currently bound texture object)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -138,11 +138,13 @@ public:
 		x += dx;
 		y -= dy;
 
-		// Ensure the sprite does not go over the border
+		// sprite border check
 		if (x < 0) x = 0;
 		if (x > 1280) x = 1280;
 		if (y < 0) y = 0;
 		if (y > 720) y = 720;
+
+		std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl;
 	}
 };
 
@@ -181,17 +183,37 @@ static void DrawElements() {
 
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
-		//draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // Draw the sprite as a red circle
-		//draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), pos, ImVec2(pos.x + 10, pos.y + 10));
-		ImVec2 size = ImVec2(100, 100); // adjust
-		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), pos, ImVec2(pos.x + size.x, pos.y + size.y), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+		//draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // uncomment this for basic sprite
+
+		ImVec2 size = ImVec2(100, 100); // Adjust size of sprite here tyty
+
+		ImVec2 topLeft = ImVec2(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f); // top left corner of sprite
+		ImVec2 bottomRight = ImVec2(topLeft.x + size.x, topLeft.y + size.y); // bottom right corner of sprite
+
+		// Canvas boundaries
+		if (topLeft.x < 0) {
+			topLeft.x = 0;
+			bottomRight.x = topLeft.x + size.x;
+		}
+		if (bottomRight.x > 1280) {
+			bottomRight.x = 1280;
+			topLeft.x = bottomRight.x - size.x;
+		}
+		if (topLeft.y < 0) {
+			topLeft.y = 0;
+			bottomRight.y = topLeft.y + size.y;
+		}
+		if (bottomRight.y > 720) {
+			bottomRight.y = 720;
+			topLeft.y = bottomRight.y - size.y;
+		}
+
+		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), topLeft, bottomRight, ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
 	}
-
-
 }
 
-void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
-	for (auto it = begin; it != end; ++it) {
+static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
+	for (auto &it = begin; it != end; ++it) {
 		it->UpdatePosition(deltaTime);
 	}
 }
@@ -525,7 +547,7 @@ int main(int argc, char *argv) {
 		ImGui::Render();
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
+		glViewport(0, 0, 1280, 720);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
 
