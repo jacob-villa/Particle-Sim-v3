@@ -274,7 +274,7 @@ int main(int argc, char *argv) {
 	double currentFramerate = 0.0;
 	double lastUIUpdateTime = 0.0;
 
-	GLuint explorerTexture = LoadTexture("squareman.jpg");
+	GLuint explorerTexture = LoadTexture("squareman.jpg"); //change sprite image here 
 
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
