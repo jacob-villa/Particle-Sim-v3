@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <iostream>
 #include <stdlib.h>
 #include <thread>
@@ -13,7 +15,6 @@
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace std;
@@ -30,8 +31,11 @@ enum Mode {
 
 Mode currentMode = DEVELOPER; // Default mode
 
-static GLuint LoadTexture(const char* path) {
-	GLuint textureID;
+bool isSpriteImageAvailable = false;
+float spriteWidth = 100.0f;
+float spriteHeight = 100.0f;
+
+static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
 
 	int width, height, nrComponents;
@@ -46,22 +50,21 @@ static GLuint LoadTexture(const char* path) {
 			format = GL_RGBA;
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data); //ignore the format warning ty
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 
-		// Set the texture wrapping/filtering options (on the currently bound texture object)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		stbi_image_free(data);
+		return true;
 	}
 	else {
 		std::cout << "Texture failed to load at path: " << path << std::endl;
 		stbi_image_free(data);
+		return false;
 	}
-
-	return textureID;
 }
 
 static float getDistance(float x1, float y1, float x2, float y2) {
@@ -144,7 +147,7 @@ public:
 		if (y < 0) y = 0;
 		if (y > 720) y = 720;
 
-		std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl;
+		//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl; // for debugging
 	}
 };
 
@@ -183,9 +186,17 @@ static void DrawElements() {
 
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
-		//draw_list->AddCircleFilled(pos, 10.0f, ImColor(ImVec4(1.0f, 0.0f, 0.0f, 1.0f))); // uncomment this for basic sprite
 
-		ImVec2 size = ImVec2(100, 100); // Adjust size of sprite here tyty
+		if (spriteWidth >= 300 || spriteHeight >= 300) {
+			spriteWidth = 300;
+			spriteHeight = 300;
+		}
+		else if (spriteWidth <= 25 || spriteHeight <= 25) {
+			spriteWidth = 25;
+			spriteHeight = 25;
+		}
+
+		ImVec2 size = ImVec2(spriteWidth, spriteHeight); // Adjust size of sprite here tyty
 
 		ImVec2 topLeft = ImVec2(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f); // top left corner of sprite
 		ImVec2 bottomRight = ImVec2(topLeft.x + size.x, topLeft.y + size.y); // bottom right corner of sprite
@@ -208,7 +219,12 @@ static void DrawElements() {
 			topLeft.y = bottomRight.y - size.y;
 		}
 
-		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), topLeft, bottomRight, ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+		if (isSpriteImageAvailable) {
+			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), topLeft, bottomRight, ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+		}
+		else {
+			draw_list->AddCircleFilled(pos, size.x * 0.5f, ImColor(1.0f, 0.0f, 0.0f, 1.0f)); // red circle sprites
+		}
 	}
 }
 
@@ -274,7 +290,8 @@ int main(int argc, char *argv) {
 	double currentFramerate = 0.0;
 	double lastUIUpdateTime = 0.0;
 
-	GLuint explorerTexture = LoadTexture("squareman.jpg"); //change sprite image here 
+	GLuint explorerTexture;
+	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
 
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
@@ -323,14 +340,12 @@ int main(int argc, char *argv) {
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
 		ImGui::Dummy(ImVec2(0, 20));
-		if (currentMode == DEVELOPER)
-		{ 
+		if (currentMode == DEVELOPER) { 
 			if (ImGui::Button("Reset Particles")) {
 				particles.clear();
 			}
 		}
-		else
-		{
+		else {
 			ImGui::Text("Buttons disabled in Explorer mode");
 		}
 		ImGui::Dummy(ImVec2(0, 20));
@@ -440,8 +455,7 @@ int main(int argc, char *argv) {
 		ImGui::InputFloat("End Velocity", &endVelocity);
 
 		ImGui::Dummy(ImVec2(0, 10));
-		if (currentMode == DEVELOPER)
-		{
+		if (currentMode == DEVELOPER) {
 			if (ImGui::Button("Add Batch Particles")) {
 				float dX = (endX - startX) / (numParticles - 1);
 				float dY = (endY - startY) / (numParticles - 1);
@@ -491,6 +505,9 @@ int main(int argc, char *argv) {
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
 		}
+
+		ImGui::InputFloat("Sprite Width", &spriteWidth);
+		ImGui::InputFloat("Sprite Height", &spriteHeight);
 
 		if (currentMode == EXPLORER && explorerSprite) {
 			float moveSpeed = explorerSprite->speed * deltaTime;
