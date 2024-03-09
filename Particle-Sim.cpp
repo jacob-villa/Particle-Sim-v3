@@ -187,14 +187,11 @@ static void DrawElements() {
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
 
-		if (spriteWidth >= 300 || spriteHeight >= 300) {
-			spriteWidth = 300;
-			spriteHeight = 300;
-		}
-		else if (spriteWidth <= 25 || spriteHeight <= 25) {
-			spriteWidth = 25;
-			spriteHeight = 25;
-		}
+		const float minSpriteSize = 25.0f;
+		const float maxSpriteSize = 300.0f;
+
+		spriteWidth = std::max(minSpriteSize, std::min(maxSpriteSize, spriteWidth));
+		spriteHeight = std::max(minSpriteSize, std::min(maxSpriteSize, spriteHeight));
 
 		ImVec2 size = ImVec2(spriteWidth, spriteHeight); // Adjust size of sprite here tyty
 
@@ -292,6 +289,10 @@ int main(int argc, char *argv) {
 
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
+
+	char imagePath[256] = "";
+
+	std::string loadImageMessage = "";
 
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
@@ -506,8 +507,31 @@ int main(int argc, char *argv) {
 			}
 		}
 
-		ImGui::InputFloat("Sprite Width", &spriteWidth);
-		ImGui::InputFloat("Sprite Height", &spriteHeight);
+		ImGui::InputFloat("Sprite Width (Max: 300, Min: 25)", &spriteWidth);
+		ImGui::InputFloat("Sprite Height (Max: 300, Min: 25)", &spriteHeight);
+		//std::cout << "Sprite Width: " << spriteWidth << ", Sprite Height: " << spriteHeight << std::endl;
+		ImGui::InputText("Image Path", imagePath, sizeof(imagePath));
+
+		if (ImGui::Button("Load Image")) {
+			GLuint newTextureID;
+			if (LoadTexture(imagePath, newTextureID)) {
+				if (explorerSprite) {
+					glDeleteTextures(1, &explorerSprite->textureID);
+				}
+				explorerSprite->textureID = newTextureID;
+				isSpriteImageAvailable = true;
+				loadImageMessage = "Sprite successfully loaded.";
+			}
+			else {
+				std::cout << "Failed to load image: " << imagePath << std::endl;
+				isSpriteImageAvailable = false;
+				loadImageMessage = "Failed to load image. Make sure you are using the right directory and image type.";
+			}
+		}
+
+		if (!loadImageMessage.empty()) {
+			ImGui::Text("%s", loadImageMessage.c_str());
+		}
 
 		if (currentMode == EXPLORER && explorerSprite) {
 			float moveSpeed = explorerSprite->speed * deltaTime;
@@ -564,7 +588,7 @@ int main(int argc, char *argv) {
 		ImGui::Render();
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, 1280, 720);
+		glViewport(0, 0, display_w, display_h);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
 
