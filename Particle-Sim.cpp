@@ -32,8 +32,8 @@ enum Mode {
 Mode currentMode = DEVELOPER; // Default mode
 
 bool isSpriteImageAvailable = false;
-float spriteWidth = 100.0f;
-float spriteHeight = 100.0f;
+float spriteWidth = 15.0f;
+float spriteHeight = 15.0f;
 
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
@@ -84,7 +84,7 @@ static float pointLineDistance(float px, float py, float x1, float y1, float x2,
 class Particle {
 public:
 	float x, y;
-	float angle; 
+	float angle;
 	float velocity;
 
 	Particle(float x, float y, float angle, float velocity)
@@ -103,7 +103,7 @@ public:
 		float threshold = velocity > 500 ? 10.0f : 3.0f;
 
 		bool collisionDetected = false;
-		
+
 		x = newX;
 		y = newY;
 
@@ -172,11 +172,15 @@ static void SpawnRandomParticle() {
 }
 
 static void GLFWErrorCallback(int error, const char* description) {
-	std::cout << "GLFW Error " <<  description << " code: " << error << std::endl;
+	std::cout << "GLFW Error " << description << " code: " << error << std::endl;
 }
 
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	// Calculate the center position of the canvas
+	ImVec2 windowSize = ImGui::GetIO().DisplaySize;
+
 
 	for (const auto& particle : particles) {
 		ImVec2 pos = ImVec2(particle.x, 720 - particle.y);
@@ -187,8 +191,18 @@ static void DrawElements() {
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
 
-		const float minSpriteSize = 25.0f;
+		const float minSpriteSize = 10.0f;
 		const float maxSpriteSize = 300.0f;
+
+		float spritePeripheralWidth = 19.0f;
+		float spritePeripheralHeight = 33.0f;
+
+		//canvas sizes
+		ImVec2 canvasSize = ImVec2(spritePeripheralWidth, spritePeripheralHeight);
+		ImVec2 canvasTopLeft = ImVec2(pos.x - canvasSize.x / 2, pos.y - canvasSize.y / 2);
+		ImVec2 canvasBottomRight = ImVec2(pos.x + canvasSize.x / 2, pos.y + canvasSize.y / 2);
+		// Draw canvas border
+		draw_list->AddRect(canvasTopLeft, canvasBottomRight, IM_COL32(255, 255, 255, 255));
 
 		spriteWidth = std::max(minSpriteSize, std::min(maxSpriteSize, spriteWidth));
 		spriteHeight = std::max(minSpriteSize, std::min(maxSpriteSize, spriteHeight));
@@ -215,6 +229,7 @@ static void DrawElements() {
 			bottomRight.y = 720;
 			topLeft.y = bottomRight.y - size.y;
 		}
+
 
 		if (isSpriteImageAvailable) {
 			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), topLeft, bottomRight, ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
@@ -341,7 +356,7 @@ int main(int argc, char *argv) {
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
 		ImGui::Dummy(ImVec2(0, 20));
-		if (currentMode == DEVELOPER) { 
+		if (currentMode == DEVELOPER) {
 			if (ImGui::Button("Reset Particles")) {
 				particles.clear();
 			}
@@ -352,7 +367,7 @@ int main(int argc, char *argv) {
 		ImGui::Dummy(ImVec2(0, 20));
 		ImGui::Text("Current FPS: %.f", currentFramerate);
 		ImGui::Text("Number of Particles: %d", particles.size());
-		
+
 		ImGui::PopStyleColor(4);
 
 		ImGui::Dummy(ImVec2(0, 15));
@@ -436,7 +451,7 @@ int main(int argc, char *argv) {
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
 
-		
+
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("Add Batch Particle");
 		ImGui::Dummy(ImVec2(0, 10));
@@ -548,7 +563,7 @@ int main(int argc, char *argv) {
 				explorerSprite->Move(moveSpeed, 0); // Move right
 			}
 		}
-		
+
 		ImGui::PopStyleColor(4);
 
 		ImGui::End();
