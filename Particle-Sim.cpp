@@ -33,8 +33,11 @@ ImVec4 particleColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 Mode currentMode = DEVELOPER; // Default mode
 
 bool isSpriteImageAvailable = false;
-float spriteWidth = 15.0f;
-float spriteHeight = 15.0f;
+
+//adjust sprite size here
+float spriteWidth = 5.0f; 
+float spriteHeight = 5.0f;
+
 float zoomFactor = 1.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
@@ -181,6 +184,7 @@ static void GLFWErrorCallback(int error, const char* description) {
 
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	
 
 	for (const auto& particle : particles) {
 		ImVec2 newPos = ImVec2(
@@ -208,9 +212,9 @@ static void DrawElements() {
 
 		newPos.y = 720 - newPos.y;
 
-		float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
-		float scaledSpriteWidth = spriteWidth * scaleFactor;
-		float scaledSpriteHeight = spriteHeight * scaleFactor;
+		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
+		float scaledSpriteWidth = spriteWidth * zoomFactor;
+		float scaledSpriteHeight = spriteHeight * zoomFactor;
 
 		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), 
 			ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2), 
@@ -492,14 +496,13 @@ int main(int argc, char *argv) {
 		if (ImGui::Button("Explorer mode")) {
 			std::cout << "Explorer mode" << std::endl;
 			currentMode = EXPLORER;
-			zoomFactor = 3.0f;
-			float zoomedViewWidth = 19.0f / 1280.0f;
-			float zoomedViewHeight = 33.0f / 720.0f;
-			float zoomFactor = std::min(zoomedViewWidth, zoomedViewHeight);
-			//std::cout << "Zoom factor: " << zoomFactor << std::endl;
+			//zoomFactor = 3.0f;
+			float scaleFactorWidth = 1280.0f / 19.0f;
+			float scaleFactorHeight = 720.0f / 33.0f;
+			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 10.0f, explorerTexture); // initial position and speed adjust here n lng
 				}
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
