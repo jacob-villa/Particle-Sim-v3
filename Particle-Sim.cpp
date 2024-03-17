@@ -184,7 +184,6 @@ static void GLFWErrorCallback(int error, const char* description) {
 
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	
 
 	for (const auto& particle : particles) {
 		ImVec2 newPos = ImVec2(
@@ -213,13 +212,32 @@ static void DrawElements() {
 		newPos.y = 720 - newPos.y;
 
 		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
+
+		if (spriteWidth > 15.0f) {
+			spriteWidth = 15.0f;
+		}
+		if (spriteWidth < 3.0f) {
+			spriteWidth = 3.0f;
+		}
+		if (spriteHeight > 15.0f) {
+			spriteHeight = 15.0f;
+		}
+		if (spriteHeight < 3.0f) {
+			spriteHeight = 3.0f;
+		}
+
 		float scaledSpriteWidth = spriteWidth * zoomFactor;
 		float scaledSpriteHeight = spriteHeight * zoomFactor;
 
-		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), 
-			ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2), 
-			ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2), 
-			ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+		if (isSpriteImageAvailable) {
+			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
+				ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+				ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
+				ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+		}
+		else {
+			draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+		}
 	}
 }
 
@@ -508,8 +526,8 @@ int main(int argc, char *argv) {
 			}
 		}
 
-		ImGui::InputFloat("Sprite Width (Max: 300, Min: 25)", &spriteWidth);
-		ImGui::InputFloat("Sprite Height (Max: 300, Min: 25)", &spriteHeight);
+		ImGui::InputFloat("Sprite Width (Max: 15, Min: 3)", &spriteWidth);
+		ImGui::InputFloat("Sprite Height (Max: 15, Min: 3)", &spriteHeight);
 		//std::cout << "Sprite Width: " << spriteWidth << ", Sprite Height: " << spriteHeight << std::endl;
 		ImGui::InputText("Image Path", imagePath, sizeof(imagePath));
 
