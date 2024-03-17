@@ -57,7 +57,7 @@ static bool LoadTexture(const char* path, GLuint& textureID) {
 			format = GL_RGBA;
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data); // ignore format warning
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -182,6 +182,18 @@ static void GLFWErrorCallback(int error, const char* description) {
 	std::cout << "GLFW Error " << description << " code: " << error << std::endl;
 }
 
+static float clampSpriteDimension(float dimension, float min, float max) {
+	if (dimension > max) {
+		return max;
+	}
+	else if (dimension < min) {
+		return min;
+	}
+	else {
+		return dimension;
+	}
+}
+
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -213,18 +225,8 @@ static void DrawElements() {
 
 		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
 
-		if (spriteWidth > 15.0f) {
-			spriteWidth = 15.0f;
-		}
-		if (spriteWidth < 3.0f) {
-			spriteWidth = 3.0f;
-		}
-		if (spriteHeight > 15.0f) {
-			spriteHeight = 15.0f;
-		}
-		if (spriteHeight < 3.0f) {
-			spriteHeight = 3.0f;
-		}
+		spriteWidth = clampSpriteDimension(spriteWidth, 3.0f, 15.0f);
+		spriteHeight = clampSpriteDimension(spriteHeight, 3.0f, 15.0f);
 
 		float scaledSpriteWidth = spriteWidth * zoomFactor;
 		float scaledSpriteHeight = spriteHeight * zoomFactor;
