@@ -19,21 +19,25 @@
 
 using namespace std;
 
-static GLFWwindow* window = nullptr;
-float PI = 3.14159265359;
-ImVec4 wallColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-ImVec4 particleColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-
 enum Mode {
 	DEVELOPER,
 	EXPLORER
 };
+
+static GLFWwindow* window = nullptr;
+float PI = 3.14159265359;
+
+ImVec4 wallColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+ImVec4 particleColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 Mode currentMode = DEVELOPER; // Default mode
 
 bool isSpriteImageAvailable = false;
 float spriteWidth = 15.0f;
 float spriteHeight = 15.0f;
+float zoomFactor = 1.0f;
+
+ImVec2 focusPoint = ImVec2(640, 360);
 
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
@@ -178,65 +182,40 @@ static void GLFWErrorCallback(int error, const char* description) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	// Calculate the center position of the canvas
-	ImVec2 windowSize = ImGui::GetIO().DisplaySize;
-
-
 	for (const auto& particle : particles) {
-		ImVec2 pos = ImVec2(particle.x, 720 - particle.y);
+		ImVec2 newPos = ImVec2(
+			(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
+		);
 
-		draw_list->AddCircleFilled(pos, 1.5f, ImColor(particleColor));
+		//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+		//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
+		newPos.y = 720 - newPos.y;
+
+		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+			draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
+		}
 	}
 
 	if (currentMode == EXPLORER && explorerSprite) {
-		ImVec2 pos = ImVec2(explorerSprite->x, 720 - explorerSprite->y);
+		ImVec2 newPos = ImVec2(
+			(explorerSprite->x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(explorerSprite->y - focusPoint.y) * zoomFactor + focusPoint.y
+		);
 
-		const float minSpriteSize = 10.0f;
-		const float maxSpriteSize = 300.0f;
+		newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+		newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
 
-		float spritePeripheralWidth = 19.0f;
-		float spritePeripheralHeight = 33.0f;
+		newPos.y = 720 - newPos.y;
 
-		//canvas sizes
-		ImVec2 canvasSize = ImVec2(spritePeripheralWidth, spritePeripheralHeight);
-		ImVec2 canvasTopLeft = ImVec2(pos.x - canvasSize.x / 2, pos.y - canvasSize.y / 2);
-		ImVec2 canvasBottomRight = ImVec2(pos.x + canvasSize.x / 2, pos.y + canvasSize.y / 2);
-		// Draw canvas border
-		draw_list->AddRect(canvasTopLeft, canvasBottomRight, IM_COL32(255, 255, 255, 255));
+		float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
+		float scaledSpriteWidth = spriteWidth * scaleFactor;
+		float scaledSpriteHeight = spriteHeight * scaleFactor;
 
-		spriteWidth = std::max(minSpriteSize, std::min(maxSpriteSize, spriteWidth));
-		spriteHeight = std::max(minSpriteSize, std::min(maxSpriteSize, spriteHeight));
-
-		ImVec2 size = ImVec2(spriteWidth, spriteHeight); // Adjust size of sprite here tyty
-
-		ImVec2 topLeft = ImVec2(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f); // top left corner of sprite
-		ImVec2 bottomRight = ImVec2(topLeft.x + size.x, topLeft.y + size.y); // bottom right corner of sprite
-
-		// Canvas boundaries
-		if (topLeft.x < 0) {
-			topLeft.x = 0;
-			bottomRight.x = topLeft.x + size.x;
-		}
-		if (bottomRight.x > 1280) {
-			bottomRight.x = 1280;
-			topLeft.x = bottomRight.x - size.x;
-		}
-		if (topLeft.y < 0) {
-			topLeft.y = 0;
-			bottomRight.y = topLeft.y + size.y;
-		}
-		if (bottomRight.y > 720) {
-			bottomRight.y = 720;
-			topLeft.y = bottomRight.y - size.y;
-		}
-
-
-		if (isSpriteImageAvailable) {
-			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), topLeft, bottomRight, ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
-		}
-		else {
-			draw_list->AddCircleFilled(pos, size.x * 0.5f, ImColor(1.0f, 0.0f, 0.0f, 1.0f)); // red circle sprites
-		}
+		draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID), 
+			ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2), 
+			ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2), 
+			ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
 	}
 }
 
@@ -499,8 +478,6 @@ int main(int argc, char *argv) {
 					//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 				}
 			}
-
-
 		}
 		else {
 			ImGui::Text("Buttons disabled in Explorer mode");
@@ -510,13 +487,19 @@ int main(int argc, char *argv) {
 		if (ImGui::Button("Developer mode")) {
 			std::cout << "Developer mode" << std::endl;
 			currentMode = DEVELOPER;
+			zoomFactor = 1.0f;
 		}
 		if (ImGui::Button("Explorer mode")) {
 			std::cout << "Explorer mode" << std::endl;
 			currentMode = EXPLORER;
+			zoomFactor = 3.0f;
+			float zoomedViewWidth = 19.0f / 1280.0f;
+			float zoomedViewHeight = 33.0f / 720.0f;
+			float zoomFactor = std::min(zoomedViewWidth, zoomedViewHeight);
+			//std::cout << "Zoom factor: " << zoomFactor << std::endl;
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 250.0f, explorerTexture); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // initial position and speed adjust here n lng
 				}
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
