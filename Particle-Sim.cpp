@@ -597,7 +597,7 @@ int main(int argc, char *argv) {
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-		glfwSwapInterval(0); // Disable VSync
+		glfwSwapInterval(1); // VSync setting here
 	}
 
 	if (explorerSprite) {
