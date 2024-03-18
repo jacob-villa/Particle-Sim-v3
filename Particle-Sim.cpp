@@ -197,21 +197,6 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	for (const auto& particle : particles) {
-		ImVec2 newPos = ImVec2(
-			(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
-			(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
-		);
-
-		//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
-		//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
-		newPos.y = 720 - newPos.y;
-
-		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-			draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
-		}
-	}
-
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 newPos = ImVec2(
 			(explorerSprite->x - focusPoint.x) * zoomFactor + focusPoint.x,
@@ -240,7 +225,39 @@ static void DrawElements() {
 		else {
 			draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 		}
+
+		for (const auto& particle : particles) {
+			ImVec2 newPos = ImVec2(
+				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
+				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
+			);
+
+			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
+			newPos.y = 720 - newPos.y;
+
+			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(particleColor));
+			}
+		}
 	}
+	else {
+		for (const auto& particle : particles) {
+			ImVec2 newPos = ImVec2(
+				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
+				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
+			);
+
+			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
+			newPos.y = 720 - newPos.y;
+
+			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
+			}
+		}
+	}
+	
 }
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
