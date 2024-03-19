@@ -209,7 +209,7 @@ static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 	//Draw white border around the black panel
-	draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
+	//draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
 
 	// Calculate the translation needed to keep the sprite centered
 	ImVec2 translation = ImVec2(0, 0);
@@ -219,6 +219,31 @@ static void DrawElements() {
 	}
 
 	float baseParticleRadius = 1.5f;
+
+	float scaledBorderWidth = 1280 * zoomFactor; // Assuming the window width is 1280
+	float scaledBorderHeight = 720 * zoomFactor; // Assuming the window height is 720
+
+	// Calculate the new position of the borders based on the focus point
+	ImVec2 newBorderPos1 = ImVec2(
+		(translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+		(translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+	);
+	ImVec2 newBorderPos2 = ImVec2(
+		(1280 + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+		(720 + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+	);
+
+	newBorderPos1.y = 720 - newBorderPos1.y;
+	newBorderPos2.y = 720 - newBorderPos2.y;
+
+	newBorderPos1.x += 50;
+	newBorderPos1.y += 50;
+
+	newBorderPos2.x += 50;
+	newBorderPos2.y += 50;
+
+	// Draw the white borders with the adjusted position and size
+	draw_list->AddRect(newBorderPos1, newBorderPos2, ImColor(255, 255, 255, 255));
 
 	// Apply the translation to all elements
 	for (const auto& particle : particles) {
@@ -268,7 +293,6 @@ static void DrawElements() {
 		}
 	}
 }
-
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
 	for (auto &it = begin; it != end; ++it) {
