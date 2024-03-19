@@ -274,7 +274,7 @@ int main(int argc, char *argv) {
 
 	glfwSetErrorCallback(GLFWErrorCallback);
 
-	window = glfwCreateWindow(1280, 720, "Particle Sim", NULL, NULL);
+	window = glfwCreateWindow(1380, 820, "Particle Sim", NULL, NULL);
 	if (!window) {
 		std::cerr << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
@@ -353,7 +353,7 @@ int main(int argc, char *argv) {
 
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-		ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(1380, 820), ImGuiCond_Always);
 		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
 		ImGui::Begin("Black Panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
@@ -363,8 +363,8 @@ int main(int argc, char *argv) {
 
 		ImGui::End();
 
-		ImGui::SetNextWindowSize(ImVec2(1280, 300), ImGuiCond_Once);
-		ImGui::SetNextWindowPos(ImVec2(0, 720), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(1380, 200), ImGuiCond_Once);
+		ImGui::SetNextWindowPos(ImVec2(0, 820), ImGuiCond_Once);
 
 		ImGui::Begin("Color Pickers", nullptr, ImGuiWindowFlags_NoDecoration);
 
@@ -375,7 +375,7 @@ int main(int argc, char *argv) {
 
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
-		ImGui::Dummy(ImVec2(0, 20));
+		ImGui::Dummy(ImVec2(0, 10));
 		if (currentMode == DEVELOPER) {
 			if (ImGui::Button("Reset Particles")) {
 				particles.clear();
@@ -384,13 +384,13 @@ int main(int argc, char *argv) {
 		else {
 			ImGui::Text("Buttons disabled in Explorer mode");
 		}
-		ImGui::Dummy(ImVec2(0, 20));
+		ImGui::Dummy(ImVec2(0, 10));
 		ImGui::Text("Current FPS: %.f", currentFramerate);
 		ImGui::Text("Number of Particles: %d", particles.size());
 
 		ImGui::PopStyleColor(4);
 
-		ImGui::Dummy(ImVec2(0, 15));
+		ImGui::Dummy(ImVec2(0, 10));
 
 		if (ImGui::GetIO().Fonts->Fonts.Size > 0) {
 			ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
@@ -413,7 +413,7 @@ int main(int argc, char *argv) {
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::SetNextWindowSizeConstraints(ImVec2(640, 1080), ImVec2(640, 1080));
-		ImGui::SetNextWindowPos(ImVec2(1280, 0), ImGuiCond_Always);
+		ImGui::SetNextWindowPos(ImVec2(1380, 0), ImGuiCond_Always);
 		ImGui::Begin("Button Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
 		ImGui::Dummy(ImVec2(0, 25));
