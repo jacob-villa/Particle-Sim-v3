@@ -97,11 +97,12 @@ public:
 	Particle(float x, float y, float angle, float velocity)
 		: x(x), y(y), angle(angle), velocity(velocity) {}
 
-	void UpdatePosition(float deltaTime) {
+	void UpdatePosition(ImGuiIO& io) {
+		float frameRate = io.Framerate;
 		float radians = angle * PI / 180.0;
 
-		float dx = cos(radians) * velocity * deltaTime;
-		float dy = sin(radians) * velocity * deltaTime;
+		float dx = cos(radians) * velocity / frameRate;
+		float dy = sin(radians) * velocity / frameRate;
 
 		float newX = x + dx;
 		float newY = y + dy;
@@ -289,9 +290,9 @@ static void DrawElements() {
 	
 }
 
-static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, float deltaTime) {
+static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
 	for (auto &it = begin; it != end; ++it) {
-		it->UpdatePosition(deltaTime);
+		it->UpdatePosition(io);
 	}
 }
 
@@ -313,7 +314,13 @@ int main(int argc, char *argv) {
 	glfwMaximizeWindow(window);
 	glfwMakeContextCurrent(window);
 
+	
+	glfwSwapInterval(1); // VSync setting here
+
 	ImGui::CreateContext();
+	
+    ImGuiIO& io = ImGui::GetIO();
+
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
@@ -334,22 +341,10 @@ int main(int argc, char *argv) {
 	float startAngle = 0.0f, endAngle = 0.0f;
 	float startVelocity = 0.0f, endVelocity = 0.0f;
 
-	double frameTime = 0.0; // Time since the last frame
-	double targetFrameTime = 1.0 / 60.0; // Target time per frame (60 FPS)
-	double updateInterval = 0.5; // Interval for updating particles (0.5 seconds)
-	double lastUpdateTime = 0.0; // Last time particles were updated
+	double updateInterval = 0.5; // Interval for updating framerate (0.5 seconds)
 	double lastFPSUpdateTime = 0.0; // Last time the framerate was updated
 
-	const double targetFPS = 60.0;
-	const std::chrono::duration<double> targetFrameDuration = std::chrono::duration<double>(1.0 / targetFPS);
-
-	std::chrono::steady_clock::time_point prevTime = std::chrono::steady_clock::now();
-
-	const double timeStep = 1.0 / targetFPS; // Time step for updates
-	double accumulator = 0.0; // Accumulates elapsed time
-
 	double currentFramerate = 0.0;
-	double lastUIUpdateTime = 0.0;
 
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
@@ -360,19 +355,6 @@ int main(int argc, char *argv) {
 
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
-		frameTime = currentTime - lastUpdateTime;
-
-		std::chrono::steady_clock::time_point currentTimeForDelta = std::chrono::steady_clock::now();
-		std::chrono::duration<double> elapsedTime = currentTimeForDelta - prevTime;
-		prevTime = currentTimeForDelta;
-
-		accumulator += frameTime;
-
-		if (elapsedTime > std::chrono::seconds(1)) {
-			elapsedTime = std::chrono::duration<double>(1.0 / targetFPS);
-		}
-
-		double deltaTime = elapsedTime.count();
 
 		glfwPollEvents();
 
@@ -601,7 +583,7 @@ int main(int argc, char *argv) {
 		}
 
 		if (currentMode == EXPLORER && explorerSprite) {
-			float moveSpeed = explorerSprite->speed * deltaTime;
+			float moveSpeed = explorerSprite->speed / io.Framerate;
 			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 				explorerSprite->Move(0, -moveSpeed); // Move up
 			}
@@ -622,32 +604,25 @@ int main(int argc, char *argv) {
 
 		ImGui::PopStyleVar();
 
-		while (accumulator >= timeStep) {
-			std::vector<std::future<void>> futures;
-			size_t numParticles = particles.size();
-			size_t numThreads = std::thread::hardware_concurrency();
-			size_t chunkSize = numParticles / numThreads;
+		std::vector<std::future<void>> futures;
+		size_t numParticles = particles.size();
+		size_t numThreads = std::thread::hardware_concurrency();
+		size_t chunkSize = numParticles / numThreads;
 
-			for (size_t i = 0; i < numThreads; ++i) {
-				auto startIter = particles.begin() + i * chunkSize;
-				auto endIter = (i == numThreads - 1) ? particles.end() : startIter + chunkSize;
-				futures.push_back(std::async(std::launch::async, UpdateParticlesRange, startIter, endIter, timeStep));
-			}
-
-			futures.push_back(std::async(std::launch::async, DrawElements));
-
-			for (auto& future : futures) {
-				future.wait();
-			}
-			accumulator -= timeStep;
+		for (size_t i = 0; i < numThreads; ++i) {
+			auto startIter = particles.begin() + i * chunkSize;
+			auto endIter = (i == numThreads - 1) ? particles.end() : startIter + chunkSize;
+			futures.push_back(std::async(std::launch::async, UpdateParticlesRange, startIter, endIter, std::ref(io)));
 		}
 
-		if (frameTime >= targetFrameTime) {
-			lastUpdateTime = currentTime;
+		futures.push_back(std::async(std::launch::async, DrawElements));
+
+		for (auto& future : futures) {
+			future.wait();
 		}
 
 		if (currentTime - lastFPSUpdateTime >= updateInterval) {
-			currentFramerate = 1.0 / frameTime;
+			currentFramerate = io.Framerate;
 			std::cout << "Framerate: " << currentFramerate << " FPS" << std::endl;
 			lastFPSUpdateTime = currentTime;
 		}
@@ -663,7 +638,6 @@ int main(int argc, char *argv) {
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-		glfwSwapInterval(1); // VSync setting here
 	}
 
 	if (explorerSprite) {
