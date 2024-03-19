@@ -218,64 +218,78 @@ static void DrawElements() {
 	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); 
 
 	if (currentMode == EXPLORER && explorerSprite) {
-		// Calculate the translation needed to move the sprite to the center of the canvas
-		float translateX = 640 - explorerSprite->x;
-		float translateY = 360 - explorerSprite->y;
-
-		// Apply the translation and scaling when rendering the sprite
 		ImVec2 newPos = ImVec2(
-			(explorerSprite->x + translateX - focusPoint.x) * zoomFactor + focusPoint.x,
-			(explorerSprite->y + translateY - focusPoint.y) * zoomFactor + focusPoint.y
+			(explorerSprite->x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(explorerSprite->y - focusPoint.y) * zoomFactor + focusPoint.y
 		);
 
-		// Ensure the new position is within the canvas bounds
 		newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
 		newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
 
-		// Adjust for the black panel rendering
+		newPos.y = 720 - newPos.y;
+
+		// Adjusting the newPos for the black panel rendering 
 		newPos.x += 50;
 		newPos.y += 50;
 
-		// Render the sprite at the translated and scaled position
+		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
+
+		spriteWidth = clampSpriteDimension(spriteWidth, 3.0f, 15.0f);
+		spriteHeight = clampSpriteDimension(spriteHeight, 3.0f, 15.0f);
+
+		float scaledSpriteWidth = spriteWidth * zoomFactor;
+		float scaledSpriteHeight = spriteHeight * zoomFactor;
+
 		if (isSpriteImageAvailable) {
 			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
-				ImVec2(newPos.x - spriteWidth / 2 * zoomFactor, newPos.y - spriteHeight / 2 * zoomFactor),
-				ImVec2(newPos.x + spriteWidth / 2 * zoomFactor, newPos.y + spriteHeight / 2 * zoomFactor),
+				ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+				ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
 				ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
 		}
 		else {
-			draw_list->AddCircleFilled(newPos, spriteWidth / 2 * zoomFactor, ImColor(0, 255, 255, 255));
+			draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 		}
 
-		// Render particles
 		for (const auto& particle : particles) {
-			ImVec2 particlePos = ImVec2(
+			ImVec2 newPos = ImVec2(
 				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
 				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
 			);
 
-			// Adjust for the black panel rendering
-			particlePos.x += 50;
-			particlePos.y += 50;
+			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
+			newPos.y = 720 - newPos.y;
 
-			draw_list->AddCircleFilled(particlePos, 1.5f * zoomFactor, ImColor(particleColor));
+			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				// Adjusting the newPos for the black panel rendering 
+				newPos.x += 50;
+				newPos.y += 50;
+
+				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(particleColor));
+			}
 		}
 	}
 	else {
-		// Render particles without the explorer sprite
 		for (const auto& particle : particles) {
-			ImVec2 particlePos = ImVec2(
+			ImVec2 newPos = ImVec2(
 				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
 				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
 			);
 
-			// Adjust for the black panel rendering
-			particlePos.x += 50;
-			particlePos.y += 50;
+			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
+			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
+			newPos.y = 720 - newPos.y;
 
-			draw_list->AddCircleFilled(particlePos, 1.5f * zoomFactor, ImColor(particleColor));
+			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				// Adjusting the newPos for the black panel rendering 
+				newPos.x += 50;
+				newPos.y += 50;
+
+				draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
+			}
 		}
 	}
+	
 }
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
@@ -538,7 +552,7 @@ int main(int argc, char *argv) {
 			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 200.0f, explorerTexture); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 10.0f, explorerTexture); // initial position and speed adjust here n lng
 				}
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
