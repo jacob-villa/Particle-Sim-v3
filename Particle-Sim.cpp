@@ -208,89 +208,67 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	// Draw white background outside the 1280x720 black panel
-	if (currentMode != EXPLORER) {
-		// Draw white background outside the 1280x720 black panel
-		draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255));
+	// Draw white border around the black panel
+	//draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
+
+	// Calculate the translation needed to keep the sprite centered
+	ImVec2 translation = ImVec2(0, 0);
+	if (currentMode == EXPLORER && explorerSprite) {
+		translation.x = 640 - explorerSprite->x;
+		translation.y = 360 - explorerSprite->y;
 	}
 
-	// Draw the black panel in the center
-	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); 
+	float baseParticleRadius = 1.5f;
 
-	if (currentMode == EXPLORER && explorerSprite) {
+	// Apply the translation to all elements
+	for (const auto& particle : particles) {
 		ImVec2 newPos = ImVec2(
-			(explorerSprite->x - focusPoint.x) * zoomFactor + focusPoint.x,
-			(explorerSprite->y - focusPoint.y) * zoomFactor + focusPoint.y
+			(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(particle.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
 		);
-
-		newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
-		newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
 
 		newPos.y = 720 - newPos.y;
 
-		// Adjusting the newPos for the black panel rendering 
-		newPos.x += 50;
-		newPos.y += 50;
+		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+			// Adjusting the newPos for the black panel rendering 
+			newPos.x += 50;
+			newPos.y += 50;
 
-		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
+			float scaledParticleRadius = baseParticleRadius * zoomFactor;
 
-		spriteWidth = clampSpriteDimension(spriteWidth, 3.0f, 15.0f);
-		spriteHeight = clampSpriteDimension(spriteHeight, 3.0f, 15.0f);
-
-		float scaledSpriteWidth = spriteWidth * zoomFactor;
-		float scaledSpriteHeight = spriteHeight * zoomFactor;
-
-		if (isSpriteImageAvailable) {
-			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
-				ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
-				ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
-				ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+			draw_list->AddCircleFilled(newPos, scaledParticleRadius, ImColor(particleColor));
 		}
-		else {
-			draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
-		}
+	}
 
-		for (const auto& particle : particles) {
-			ImVec2 newPos = ImVec2(
-				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
-				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
-			);
+	if (currentMode == EXPLORER && explorerSprite) {
+		ImVec2 newPos = ImVec2(
+			(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+		);
 
-			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
-			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
-			newPos.y = 720 - newPos.y;
+		newPos.y = 720 - newPos.y;
 
-			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-				// Adjusting the newPos for the black panel rendering 
-				newPos.x += 50;
-				newPos.y += 50;
+		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+			// Adjusting the newPos for the black panel rendering 
+			newPos.x += 50;
+			newPos.y += 50;
 
-				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(particleColor));
+			float scaledSpriteWidth = spriteWidth * zoomFactor;
+			float scaledSpriteHeight = spriteHeight * zoomFactor;
+
+			if (isSpriteImageAvailable) {
+				draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
+					ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+					ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
+					ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+			}
+			else {
+				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 			}
 		}
 	}
-	else {
-		for (const auto& particle : particles) {
-			ImVec2 newPos = ImVec2(
-				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
-				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
-			);
-
-			//newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
-			//newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
-			newPos.y = 720 - newPos.y;
-
-			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-				// Adjusting the newPos for the black panel rendering 
-				newPos.x += 50;
-				newPos.y += 50;
-
-				draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
-			}
-		}
-	}
-	
 }
+
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
 	for (auto &it = begin; it != end; ++it) {
@@ -552,7 +530,7 @@ int main(int argc, char *argv) {
 			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 			if (currentMode == EXPLORER) {
 				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 10.0f, explorerTexture); // initial position and speed adjust here n lng
+					explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // initial position and speed adjust here n lng
 				}
 				//explorerSprite->UpdatePosition(deltaTime);
 			}
