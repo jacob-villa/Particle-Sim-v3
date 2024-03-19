@@ -206,7 +206,10 @@ static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 	// Draw white background outside the 1280x720 black panel
-	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255));
+	if (currentMode != EXPLORER) {
+		// Draw white background outside the 1280x720 black panel
+		draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255));
+	}
 
 	// Draw the black panel in the center
 	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); 
