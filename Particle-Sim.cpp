@@ -34,6 +34,8 @@ Mode currentMode = DEVELOPER; // Default mode
 
 bool isSpriteImageAvailable = false;
 
+bool keyW = false, keyA = false, keyS = false, keyD = false;
+
 //adjust sprite size here
 float spriteWidth = 5.0f; 
 float spriteHeight = 5.0f;
@@ -583,19 +585,28 @@ int main(int argc, char *argv) {
 		}
 
 		if (currentMode == EXPLORER && explorerSprite) {
+			ImGui::Text("Sprite Coordinates: (%.2f, %.2f)", explorerSprite->x, explorerSprite->y);
+		}
+
+		// Check for key presses and releases
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) keyW = true;
+		else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE || glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE) keyW = false;
+
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) keyA = true;
+		else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE) keyA = false;
+
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) keyS = true;
+		else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE) keyS = false;
+
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) keyD = true;
+		else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE) keyD = false;
+
+		if (currentMode == EXPLORER && explorerSprite) {
 			float moveSpeed = explorerSprite->speed / io.Framerate;
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-				explorerSprite->Move(0, -moveSpeed); // Move up
-			}
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-				explorerSprite->Move(-moveSpeed, 0); // Move left
-			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-				explorerSprite->Move(0, moveSpeed); // Move down
-			}
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-				explorerSprite->Move(moveSpeed, 0); // Move right
-			}
+			if (keyW) explorerSprite->Move(0, -moveSpeed); // Move up
+			if (keyA) explorerSprite->Move(-moveSpeed, 0); // Move left
+			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
+			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 		}
 
 		ImGui::PopStyleColor(4);
