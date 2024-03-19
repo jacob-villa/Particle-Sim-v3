@@ -131,6 +131,10 @@ public:
 			y = 720;
 			angle = -angle;
 		}
+
+		// Ensure particles stay within the 1280x720 black panel
+		x = std::max(0.0f, std::min(1280.0f, x));
+		y = std::max(0.0f, std::min(720.0f, y));
 	}
 };
 
@@ -153,6 +157,10 @@ public:
 		if (x > 1280) x = 1280;
 		if (y < 0) y = 0;
 		if (y > 720) y = 720;
+
+		// Ensure the explorer sprite stays within the 1280x720 black panel
+		x = std::max(0.0f, std::min(1280.0f, x));
+		y = std::max(0.0f, std::min(720.0f, y));
 
 		//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl; // for debugging
 	}
@@ -197,6 +205,12 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+	// Draw white background outside the 1280x720 black panel
+	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255));
+
+	// Draw the black panel in the center
+	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); 
+
 	if (currentMode == EXPLORER && explorerSprite) {
 		ImVec2 newPos = ImVec2(
 			(explorerSprite->x - focusPoint.x) * zoomFactor + focusPoint.x,
@@ -207,6 +221,10 @@ static void DrawElements() {
 		newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
 
 		newPos.y = 720 - newPos.y;
+
+		// Adjusting the newPos for the black panel rendering 
+		newPos.x += 50;
+		newPos.y += 50;
 
 		//float scaleFactor = std::min(19.0f / spriteWidth, 33.0f / spriteHeight);
 
@@ -237,6 +255,10 @@ static void DrawElements() {
 			newPos.y = 720 - newPos.y;
 
 			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				// Adjusting the newPos for the black panel rendering 
+				newPos.x += 50;
+				newPos.y += 50;
+
 				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(particleColor));
 			}
 		}
@@ -253,6 +275,10 @@ static void DrawElements() {
 			newPos.y = 720 - newPos.y;
 
 			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				// Adjusting the newPos for the black panel rendering 
+				newPos.x += 50;
+				newPos.y += 50;
+
 				draw_list->AddCircleFilled(newPos, 1.5f, ImColor(particleColor));
 			}
 		}
