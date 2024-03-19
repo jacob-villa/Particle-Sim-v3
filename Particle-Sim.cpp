@@ -208,8 +208,8 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	// Draw white border around the black panel
-	//draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
+	//Draw white border around the black panel
+	draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
 
 	// Calculate the translation needed to keep the sprite centered
 	ImVec2 translation = ImVec2(0, 0);
