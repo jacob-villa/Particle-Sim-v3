@@ -240,7 +240,7 @@ static void DrawElements() {
 		}
 	}
 
-	if (currentMode == EXPLORER && explorerSprite) {
+	if (currentMode == EXPLORER || explorerSprite) {
 		ImVec2 newPos = ImVec2(
 			(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
 			(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
@@ -329,6 +329,7 @@ int main(int argc, char *argv) {
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
 
+	explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture);
 	char imagePath[256] = "";
 
 	std::string loadImageMessage = "";
@@ -528,12 +529,6 @@ int main(int argc, char *argv) {
 			float scaleFactorWidth = 1280.0f / 19.0f;
 			float scaleFactorHeight = 720.0f / 33.0f;
 			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
-			if (currentMode == EXPLORER) {
-				if (!explorerSprite) {
-					explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // initial position and speed adjust here n lng
-				}
-				//explorerSprite->UpdatePosition(deltaTime);
-			}
 		}
 
 		ImGui::InputFloat("Sprite Width (Max: 15, Min: 3)", &spriteWidth);
