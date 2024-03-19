@@ -207,24 +207,36 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255)); //white panel
-	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); //black panel
+
+	// Draw white background outside the 1280x720 black panel
+	if (currentMode != EXPLORER) {
+		// Draw white background outside the 1280x720 black panel
+		draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), ImColor(255, 255, 255, 255));
+	}
+
+	// Draw the black panel in the center
+	draw_list->AddRectFilled(ImVec2(50, 50), ImVec2(1330, 770), ImColor(0, 0, 0, 255)); 
 
 	if (currentMode == EXPLORER && explorerSprite) {
+		// Calculate the translation needed to move the sprite to the center of the canvas
 		float translateX = 640 - explorerSprite->x;
 		float translateY = 360 - explorerSprite->y;
 
+		// Apply the translation and scaling when rendering the sprite
 		ImVec2 newPos = ImVec2(
 			(explorerSprite->x + translateX - focusPoint.x) * zoomFactor + focusPoint.x,
 			(explorerSprite->y + translateY - focusPoint.y) * zoomFactor + focusPoint.y
 		);
 
+		// Ensure the new position is within the canvas bounds
 		newPos.x = std::max(0.0f, std::min(1280.0f, newPos.x));
 		newPos.y = std::max(0.0f, std::min(720.0f, newPos.y));
 
+		// Adjust for the black panel rendering
 		newPos.x += 50;
 		newPos.y += 50;
 
+		// Render the sprite at the translated and scaled position
 		if (isSpriteImageAvailable) {
 			draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
 				ImVec2(newPos.x - spriteWidth / 2 * zoomFactor, newPos.y - spriteHeight / 2 * zoomFactor),
@@ -235,12 +247,14 @@ static void DrawElements() {
 			draw_list->AddCircleFilled(newPos, spriteWidth / 2 * zoomFactor, ImColor(0, 255, 255, 255));
 		}
 
+		// Render particles
 		for (const auto& particle : particles) {
 			ImVec2 particlePos = ImVec2(
 				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
 				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
 			);
 
+			// Adjust for the black panel rendering
 			particlePos.x += 50;
 			particlePos.y += 50;
 
@@ -248,12 +262,14 @@ static void DrawElements() {
 		}
 	}
 	else {
+		// Render particles without the explorer sprite
 		for (const auto& particle : particles) {
 			ImVec2 particlePos = ImVec2(
 				(particle.x - focusPoint.x) * zoomFactor + focusPoint.x,
 				(particle.y - focusPoint.y) * zoomFactor + focusPoint.y
 			);
 
+			// Adjust for the black panel rendering
 			particlePos.x += 50;
 			particlePos.y += 50;
 
