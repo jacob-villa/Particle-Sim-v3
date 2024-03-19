@@ -46,5 +46,8 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp
     ${PROJECT_SOURCE_DIR}/imgui/imgui_widgets.cpp
 )
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/vendor/include)
+
 add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLEW)
 
