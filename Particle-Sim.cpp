@@ -155,13 +155,11 @@ public:
 		x += dx;
 		y -= dy;
 
-		// sprite border check
 		if (x < 0) x = 0;
 		if (x > 1280) x = 1280;
 		if (y < 0) y = 0;
 		if (y > 720) y = 720;
 
-		// Ensure the explorer sprite stays within the 1280x720 black panel
 		x = std::max(0.0f, std::min(1280.0f, x));
 		y = std::max(0.0f, std::min(720.0f, y));
 
@@ -208,21 +206,15 @@ static float clampSpriteDimension(float dimension, float min, float max) {
 static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	//Draw white border around the black panel
-	//draw_list->AddRect(ImVec2(50, 50), ImVec2(1330, 770), ImColor(255, 255, 255, 255));
-	// Calculate the translation needed to keep the sprite centered
 	ImVec2 translation = ImVec2(0, 0);
 	if (currentMode == EXPLORER && explorerSprite) {
 		translation.x = 640 - explorerSprite->x;
 		translation.y = 360 - explorerSprite->y;
 	}
 
-	float baseParticleRadius = 1.5f;
+	float scaledBorderWidth = 1280 * zoomFactor; 
+	float scaledBorderHeight = 720 * zoomFactor; 
 
-	float scaledBorderWidth = 1280 * zoomFactor; // Assuming the window width is 1280
-	float scaledBorderHeight = 720 * zoomFactor; // Assuming the window height is 720
-
-	// Calculate the new position of the borders based on the focus point
 	ImVec2 newBorderPos1 = ImVec2(
 		(translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
 		(translation.y - focusPoint.y) * zoomFactor + focusPoint.y
@@ -241,14 +233,11 @@ static void DrawElements() {
 	newBorderPos2.x += 50;
 	newBorderPos2.y += 50;
 
-	// Draw the white borders with the adjusted position and size
 	ImColor purple = ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f);
 	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), purple);
 	draw_list->AddRectFilled(newBorderPos1, newBorderPos2, ImColor(0, 0, 0, 255));
 
-
-
-	// Apply the translation to all elements
+	float baseParticleRadius = 1.5f;
 	for (const auto& particle : particles) {
 		ImVec2 newPos = ImVec2(
 			(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
@@ -258,7 +247,6 @@ static void DrawElements() {
 		newPos.y = 720 - newPos.y;
 
 		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-			// Adjusting the newPos for the black panel rendering 
 			newPos.x += 50;
 			newPos.y += 50;
 
@@ -277,7 +265,6 @@ static void DrawElements() {
 		newPos.y = 720 - newPos.y;
 
 		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-			// Adjusting the newPos for the black panel rendering 
 			newPos.x += 50;
 			newPos.y += 50;
 
@@ -320,7 +307,6 @@ int main(int argc, char *argv) {
 
 	glfwMaximizeWindow(window);
 	glfwMakeContextCurrent(window);
-
 	
 	glfwSwapInterval(1); // VSync setting here
 
@@ -356,7 +342,7 @@ int main(int argc, char *argv) {
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
 
-	explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture);
+	explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // change sprite speed and initial position here
 	char imagePath[256] = "";
 
 	std::string loadImageMessage = "";
