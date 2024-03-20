@@ -257,28 +257,31 @@ static void DrawElements() {
 	}
 
 	if (currentMode == EXPLORER || explorerSprite) {
-		ImVec2 newPos = ImVec2(
-			(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-			(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
-		);
 
-		newPos.y = 720 - newPos.y;
+		if (explorerSprite) {
+			ImVec2 newPos = ImVec2(
+				(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+				(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+			);
 
-		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-			newPos.x += 50;
-			newPos.y += 50;
+			newPos.y = 720 - newPos.y;
 
-			float scaledSpriteWidth = spriteWidth * zoomFactor;
-			float scaledSpriteHeight = spriteHeight * zoomFactor;
+			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+				newPos.x += 50;
+				newPos.y += 50;
 
-			if (isSpriteImageAvailable) {
-				draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
-					ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
-					ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
-					ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
-			}
-			else {
-				draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+				float scaledSpriteWidth = spriteWidth * zoomFactor;
+				float scaledSpriteHeight = spriteHeight * zoomFactor;
+
+				if (isSpriteImageAvailable) {
+					draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
+						ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+						ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
+						ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+				}
+				else {
+					draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+				}
 			}
 		}
 	}
