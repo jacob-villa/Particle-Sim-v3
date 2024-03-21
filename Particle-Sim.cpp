@@ -384,14 +384,7 @@ int main(int argc, char *argv) {
 		ImGui::ColorEdit3("Particle Color", (float*)&particleColor);
 
 		ImGui::Dummy(ImVec2(0, 10));
-		if (currentMode == DEVELOPER) {
-			if (ImGui::Button("Reset Particles")) {
-				particles.clear();
-			}
-		}
-		else {
-			ImGui::Text("Buttons disabled in Explorer mode");
-		}
+
 		ImGui::Dummy(ImVec2(0, 10));
 		ImGui::Text("Current FPS: %.f", currentFramerate);
 		ImGui::Text("Number of Particles: %d", particles.size());
@@ -459,7 +452,11 @@ int main(int argc, char *argv) {
 			if (ImGui::Button("Spawn Random Particle")) {
 				SpawnRandomParticle();
 			}
-
+			ImGui::SameLine();
+			
+			if (ImGui::Button("Reset Particles")) {
+				particles.clear();
+			}
 			if (showErrorPopup) {
 				ImGui::OpenPopup("Invalid Input");
 				if (ImGui::BeginPopupModal("Invalid Input", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
