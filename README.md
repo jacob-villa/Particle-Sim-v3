@@ -6,10 +6,10 @@ This particle simulator provides a visualization for adding 2-dimensional partic
 2. Explorer Mode
 
 ## Developer Mode
-Users are able to specify the position, angle, and velocity of particles added to the canvas. Particles can also be added in batches with varying starting positions, angles, or velocities. 
+Users are able to specify the position, angle, and velocity of particles added to the canvas. Particles can also be added in batches with varying starting positions, angles, or velocities. A sprite is also seen at the canvas screen indicating the position of the user for the Explorer Mode.
 
 ## Explorer Mode
-Users will only be able to view peripheral vision of the sprite which is 19 rows by 33 columns. The sprite can be moved around the canvas by either WASD or arrow keys. 
+The users will be presented with a zoomed-in perspective representing a 19 x 33 space in the screen. The aforementioned sprite represents the user's "avatar", which can move around the canvas using the "WASD" keys or the arrow keys in the keyboard.
 
 # Running the Application
 
