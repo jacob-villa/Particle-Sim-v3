@@ -396,16 +396,16 @@ int main(int argc, char *argv) {
 		if (ImGui::GetIO().Fonts->Fonts.Size > 0) {
 			ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
 
-			ImGui::Text("Particle Physics Simulator");
+			ImGui::Text("Particle Physics Simulator V2");
 			ImGui::Text("STDISCM - S12");
 			ImGui::Text("Joshua Ejercito, Ryan Go, Anton Morana, Jacob Villa");
 
 			ImGui::PopFont();
 		}
 		else {
-			ImGui::Text("Particle Physics Simulator");
+			ImGui::Text("Particle Physics Simulator V2");
 			ImGui::Text("STDISCM - S12");
-			ImGui::Text("Joshua Ejercito, Ryan Go, Naton Morana, Jacob Villa");
+			ImGui::Text("Joshua Ejercito, Ryan Go, Anton Morana, Jacob Villa");
 		}
 
 		ImGui::End();
