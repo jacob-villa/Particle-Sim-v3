@@ -11,6 +11,10 @@ Users are able to specify the position, angle, and velocity of particles added t
 ## Explorer Mode
 The users will be presented with a zoomed-in perspective representing a 19 x 33 space in the screen. The aforementioned sprite represents the user's "avatar", which can move around the canvas using the "WASD" keys or the arrow keys in the keyboard.
 
+# Usage Instructions
+- Download the libraries used through this [link](https://drive.google.com/file/d/1WYh7ZnrMbhtwgByEr5ZQEsxh3n9TsQEk/view?usp=drive_link).
+- Extract the folders of the libraries in the project directory.
+
 # Running the Application
 
 ### Using the Executable File
