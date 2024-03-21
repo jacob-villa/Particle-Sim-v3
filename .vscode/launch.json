@@ -5,7 +5,7 @@
       "name": "Debug",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/STDISCM_PROJECT_1",
+      "program": "${workspaceFolder}/build/STDISCM_PROJECT_2",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
