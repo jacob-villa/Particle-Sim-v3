@@ -30,7 +30,7 @@ float PI = 3.14159265359;
 ImVec4 wallColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
 ImVec4 particleColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-Mode currentMode = DEVELOPER; // Default mode
+Mode currentMode = EXPLORER; // Default mode
 
 bool isSpriteImageAvailable = false;
 
@@ -41,6 +41,8 @@ float spriteWidth = 5.0f;
 float spriteHeight = 5.0f;
 
 float zoomFactor = 1.0f;
+float scaleFactorWidth = 1280.0f / 19.0f;
+float scaleFactorHeight = 720.0f / 33.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
 
@@ -294,6 +296,9 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 }
 
 int main(int argc, char* argv) {
+
+	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
+
 	if (!glfwInit()) {
 		std::cout << "Failed to initialize GLFW" << std::endl;
 		std::cin.get();
