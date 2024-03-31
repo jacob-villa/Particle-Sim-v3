@@ -11,6 +11,7 @@
 #include <random>
 #include <future>
 
+#include <boost/asio.hpp>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
@@ -18,6 +19,26 @@
 #include "stb_image.h"
 
 using namespace std;
+using boost::asio::ip::tcp;
+
+void runServer() {
+	try {
+		boost::asio::io_context io_context;
+		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 12345));
+
+		for (;;) {
+			tcp::socket socket(io_context);
+			acceptor.accept(socket);
+
+			std::cout << "Server sent message: " << std::endl;
+			std::string message = "Hello from the server!\n";
+			boost::asio::write(socket, boost::asio::buffer(message));
+		}
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
+	}
+}
 
 enum Mode {
 	DEVELOPER,
@@ -294,6 +315,8 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 }
 
 int main(int argc, char *argv) {
+	std::thread serverThread(runServer);
+
 	if (!glfwInit()) {
 		std::cout << "Failed to initialize GLFW" << std::endl;
 		std::cin.get();
@@ -636,6 +659,8 @@ int main(int argc, char *argv) {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	serverThread.join();
 
 	if (explorerSprite) {
 		glDeleteTextures(1, &explorerSprite->textureID);
