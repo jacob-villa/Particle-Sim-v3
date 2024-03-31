@@ -530,48 +530,48 @@ int main(int argc, char *argv) {
 		}
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
-		if (ImGui::Button("Developer mode")) {
-			std::cout << "Developer mode" << std::endl;
-			currentMode = DEVELOPER;
-			zoomFactor = 1.0f;
-		}
-		if (ImGui::Button("Explorer mode")) {
-			std::cout << "Explorer mode" << std::endl;
-			currentMode = EXPLORER;
-			//zoomFactor = 3.0f;
-			float scaleFactorWidth = 1280.0f / 19.0f;
-			float scaleFactorHeight = 720.0f / 33.0f;
-			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
-		}
+		//if (ImGui::Button("Developer mode")) {
+		//	std::cout << "Developer mode" << std::endl;
+		//	currentMode = DEVELOPER;
+		//	zoomFactor = 1.0f;
+		//}
+		//if (ImGui::Button("Explorer mode")) {
+		//	std::cout << "Explorer mode" << std::endl;
+		//	currentMode = EXPLORER;
+		//	//zoomFactor = 3.0f;
+		//	float scaleFactorWidth = 1280.0f / 19.0f;
+		//	float scaleFactorHeight = 720.0f / 33.0f;
+		//	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
+		//}
 
-		ImGui::InputFloat("Sprite Width (Max: 15, Min: 3)", &spriteWidth);
-		ImGui::InputFloat("Sprite Height (Max: 15, Min: 3)", &spriteHeight);
-		//std::cout << "Sprite Width: " << spriteWidth << ", Sprite Height: " << spriteHeight << std::endl;
-		ImGui::InputText("Image Path", imagePath, sizeof(imagePath));
+		//ImGui::InputFloat("Sprite Width (Max: 15, Min: 3)", &spriteWidth);
+		//ImGui::InputFloat("Sprite Height (Max: 15, Min: 3)", &spriteHeight);
+		////std::cout << "Sprite Width: " << spriteWidth << ", Sprite Height: " << spriteHeight << std::endl;
+		//ImGui::InputText("Image Path", imagePath, sizeof(imagePath));
 
-		if (ImGui::Button("Load Image")) {
-			GLuint newTextureID;
-			if (LoadTexture(imagePath, newTextureID)) {
-				if (explorerSprite) {
-					glDeleteTextures(1, &explorerSprite->textureID);
-				}
-				explorerSprite->textureID = newTextureID;
-				isSpriteImageAvailable = true;
-				loadImageMessage = "Sprite successfully loaded.";
-			}
-			else {
-				std::cout << "Failed to load image: " << imagePath << std::endl;
-				isSpriteImageAvailable = false;
-				loadImageMessage = "Failed to load image. Make sure you are using the right directory and image type.";
-			}
-		}
+		//if (ImGui::Button("Load Image")) {
+		//	GLuint newTextureID;
+		//	if (LoadTexture(imagePath, newTextureID)) {
+		//		if (explorerSprite) {
+		//			glDeleteTextures(1, &explorerSprite->textureID);
+		//		}
+		//		explorerSprite->textureID = newTextureID;
+		//		isSpriteImageAvailable = true;
+		//		loadImageMessage = "Sprite successfully loaded.";
+		//	}
+		//	else {
+		//		std::cout << "Failed to load image: " << imagePath << std::endl;
+		//		isSpriteImageAvailable = false;
+		//		loadImageMessage = "Failed to load image. Make sure you are using the right directory and image type.";
+		//	}
+		//}
 
-		if (!loadImageMessage.empty()) {
-			ImGui::Text("%s", loadImageMessage.c_str());
-		}
+		//if (!loadImageMessage.empty()) {
+		//	ImGui::Text("%s", loadImageMessage.c_str());
+		//}
 
 
-		ImGui::Text("Sprite Coordinates: (%.2f, %.2f)", explorerSprite->x, explorerSprite->y);
+		//ImGui::Text("Sprite Coordinates: (%.2f, %.2f)", explorerSprite->x, explorerSprite->y);
 
 
 		// Check for key presses and releases
