@@ -11,6 +11,8 @@
 #include <random>
 #include <future>
 
+#include <boost/asio.hpp>
+
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
@@ -18,6 +20,25 @@
 #include "stb_image.h"
 
 using namespace std;
+
+class NetworkClient {
+public:
+	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
+		: ioContext(), socket(ioContext) {
+		boost::asio::ip::tcp::resolver resolver(ioContext);
+		boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(serverAddress, serverPort);
+		boost::asio::connect(socket, endpoints);
+	}
+
+	void sendPosition(float x, float y) {
+		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
+		boost::asio::write(socket, boost::asio::buffer(message));
+	}
+
+private:
+	boost::asio::io_context ioContext;
+	boost::asio::ip::tcp::socket socket;
+};
 
 enum Mode {
 	DEVELOPER,
@@ -296,6 +317,8 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 }
 
 int main(int argc, char* argv) {
+
+	NetworkClient networkClient("127.0.0.1", "4160");
 
 	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 
@@ -598,6 +621,8 @@ int main(int argc, char* argv) {
 			if (keyA) explorerSprite->Move(-moveSpeed, 0); // Move left
 			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
+
+			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
 		}
 
 		ImGui::PopStyleColor(4);

@@ -21,10 +21,13 @@
 using namespace std;
 using boost::asio::ip::tcp;
 
+short port = 69696;
 void runServer() {
 	try {
 		boost::asio::io_context io_context;
-		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 12345));
+		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
+
+		std::cout << "Server started on port " << port << std::endl;
 
 		for (;;) {
 			tcp::socket socket(io_context);
@@ -33,6 +36,18 @@ void runServer() {
 			std::cout << "Server sent message: " << std::endl;
 			std::string message = "Hello from the server!\n";
 			boost::asio::write(socket, boost::asio::buffer(message));
+
+			// Read incoming messages
+			boost::asio::streambuf buf;
+			boost::system::error_code error;
+			size_t len = boost::asio::read(socket, buf, error);
+			if (!error && len > 0) {
+				std::istream is(&buf);
+				std::string line;
+				std::getline(is, line);
+				std::cout << "Received from client: " << line << std::endl;
+				// Parse the position from the line and update the server's state accordingly
+			}
 		}
 	}
 	catch (std::exception& e) {
