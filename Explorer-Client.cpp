@@ -20,25 +20,7 @@
 #include "stb_image.h"
 
 using namespace std;
-
-class NetworkClient {
-public:
-	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
-		: ioContext(), socket(ioContext) {
-		boost::asio::ip::tcp::resolver resolver(ioContext);
-		boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(serverAddress, serverPort);
-		boost::asio::connect(socket, endpoints);
-	}
-
-	void sendPosition(float x, float y) {
-		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
-		boost::asio::write(socket, boost::asio::buffer(message));
-	}
-
-private:
-	boost::asio::io_context ioContext;
-	boost::asio::ip::tcp::socket socket;
-};
+using boost::asio::ip::tcp;
 
 enum Mode {
 	DEVELOPER,
@@ -315,6 +297,25 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 		it->UpdatePosition(io);
 	}
 }
+
+class NetworkClient {
+public:
+	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
+		: ioContext(), socket(ioContext) {
+		boost::asio::ip::tcp::resolver resolver(ioContext);
+		boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(serverAddress, serverPort);
+		boost::asio::connect(socket, endpoints);
+	}
+
+	void sendPosition(float x, float y) {
+		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
+		boost::asio::write(socket, boost::asio::buffer(message));
+	}
+
+private:
+	boost::asio::io_context ioContext;
+	boost::asio::ip::tcp::socket socket;
+};
 
 int main(int argc, char* argv) {
 
