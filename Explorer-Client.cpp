@@ -312,6 +312,34 @@ public:
 		boost::asio::write(socket, boost::asio::buffer(message));
 	}
 
+	std::vector<Particle> receiveParticles() {
+		std::vector<Particle> receivedParticles;
+		constexpr size_t bufferSize = 1024;
+		char buffer[bufferSize];
+
+		try {
+			boost::system::error_code error;
+			size_t length = socket.read_some(boost::asio::buffer(buffer, bufferSize), error);
+
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				std::istringstream iss(std::string(buffer, length));
+				float x, y, angle, velocity;
+				while (iss >> x >> y >> angle >> velocity) {
+					receivedParticles.emplace_back(x, y, angle, velocity);
+				}
+			}
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error receiving particles: " << e.what() << std::endl;
+		}
+
+		std::cout << "Received " << receivedParticles.size() << " particles." << std::endl;
+		return receivedParticles;
+	}
+
 private:
 	boost::asio::io_context ioContext;
 	boost::asio::ip::tcp::socket socket;
@@ -395,6 +423,10 @@ int main(int argc, char* argv) {
 		ImGui::Begin("Black Panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
 		ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+		//std::vector<Particle> receivedParticles = networkClient.receiveParticles();
+
+		//particles = receivedParticles;
 
 		DrawElements();
 
@@ -624,6 +656,10 @@ int main(int argc, char* argv) {
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 
 			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+
+			// This portion breaks the UI a lot idk why
+			//std::vector<Particle> receivedParticles = networkClient.receiveParticles();
+			//particles = receivedParticles;
 		}
 
 		ImGui::PopStyleColor(4);
