@@ -22,38 +22,6 @@ using namespace std;
 using boost::asio::ip::tcp;
 
 short port = 69696;
-void runServer() {
-	try {
-		boost::asio::io_context io_context;
-		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
-
-		std::cout << "Server started on port " << port << std::endl;
-
-		for (;;) {
-			tcp::socket socket(io_context);
-			acceptor.accept(socket);
-
-			std::cout << "Server sent message: " << std::endl;
-			std::string message = "Hello from the server!\n";
-			boost::asio::write(socket, boost::asio::buffer(message));
-
-			// Read incoming messages
-			boost::asio::streambuf buf;
-			boost::system::error_code error;
-			size_t len = boost::asio::read(socket, buf, error);
-			if (!error && len > 0) {
-				std::istream is(&buf);
-				std::string line;
-				std::getline(is, line);
-				std::cout << "Received from client: " << line << std::endl;
-				// Parse the position from the line and update the server's state accordingly
-			}
-		}
-	}
-	catch (std::exception& e) {
-		std::cerr << "Exception in server: " << e.what() << "\n";
-	}
-}
 
 enum Mode {
 	DEVELOPER,
@@ -326,6 +294,44 @@ static void DrawElements() {
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
 	for (auto &it = begin; it != end; ++it) {
 		it->UpdatePosition(io);
+	}
+}
+
+std::string serializeParticles(const std::vector<Particle>& particles) {
+	std::stringstream ss;
+	for (const auto& particle : particles) {
+		ss << particle.x << "," << particle.y << "," << particle.angle << "," << particle.velocity << "|";
+	}
+	return ss.str();
+}
+
+void runServer() {
+	try {
+		boost::asio::io_context io_context;
+		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
+
+		std::cout << "Server started on port " << port << std::endl;
+
+		std::vector<tcp::socket> clients;
+
+		for (;;) {
+			tcp::socket socket(io_context);
+			acceptor.accept(socket);
+			clients.push_back(std::move(socket));
+
+			std::cout << "New client connected." << std::endl;
+		}
+
+		while (true) {
+			std::string serializedData = serializeParticles(particles);
+			for (auto& socket : clients) {
+				boost::asio::write(socket, boost::asio::buffer(serializedData));
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
 	}
 }
 
