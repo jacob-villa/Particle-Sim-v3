@@ -340,6 +340,29 @@ public:
 		return receivedParticles;
 	}
 
+	std::string receiveMessage() {
+		constexpr size_t bufferSize = 1024;
+		char buffer[bufferSize];
+		std::string message;
+
+		try {
+			boost::system::error_code error;
+			size_t length = socket.read_some(boost::asio::buffer(buffer, bufferSize), error);
+
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				message = std::string(buffer, length);
+			}
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error receiving message: " << e.what() << std::endl;
+		}
+
+		return message;
+	}
+
 private:
 	boost::asio::io_context ioContext;
 	boost::asio::ip::tcp::socket socket;
@@ -348,6 +371,12 @@ private:
 int main(int argc, char* argv) {
 
 	NetworkClient networkClient("127.0.0.1", "4160");
+
+	std::string serverMessage = networkClient.receiveMessage();
+	if (!serverMessage.empty()) {
+		std::cout << "Received message from server: " << serverMessage << std::endl;
+		// Process the message
+	}
 
 	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 
@@ -378,6 +407,10 @@ int main(int argc, char* argv) {
 	ImGui_ImplOpenGL3_Init();
 
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+	/*for (int i = 0; i < 5; ++i) {
+		SpawnRandomParticle();
+	}*/
 
 	float newParticleX = 0.0f;
 	float newParticleY = 0.0f;
@@ -426,7 +459,7 @@ int main(int argc, char* argv) {
 
 		//std::vector<Particle> receivedParticles = networkClient.receiveParticles();
 
-		//particles = receivedParticles;
+		//particles = networkClient.receiveParticles();
 
 		DrawElements();
 
@@ -591,19 +624,19 @@ int main(int argc, char* argv) {
 		}
 		ImGui::Dummy(ImVec2(0, 55));
 		ImGui::Text("--------------------------------------------------------------------------------------------------------------------");
-		if (ImGui::Button("Developer mode")) {
-			std::cout << "Developer mode" << std::endl;
-			currentMode = DEVELOPER;
-			zoomFactor = 1.0f;
-		}
-		if (ImGui::Button("Explorer mode")) {
-			std::cout << "Explorer mode" << std::endl;
-			currentMode = EXPLORER;
-			//zoomFactor = 3.0f;
-			float scaleFactorWidth = 1280.0f / 19.0f;
-			float scaleFactorHeight = 720.0f / 33.0f;
-			zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
-		}
+		//if (ImGui::Button("Developer mode")) {
+		//	std::cout << "Developer mode" << std::endl;
+		//	currentMode = DEVELOPER;
+		//	zoomFactor = 1.0f;
+		//}
+		//if (ImGui::Button("Explorer mode")) {
+		//	std::cout << "Explorer mode" << std::endl;
+		//	currentMode = EXPLORER;
+		//	//zoomFactor = 3.0f;
+		//	float scaleFactorWidth = 1280.0f / 19.0f;
+		//	float scaleFactorHeight = 720.0f / 33.0f;
+		//	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
+		//}
 
 		ImGui::InputFloat("Sprite Width (Max: 15, Min: 3)", &spriteWidth);
 		ImGui::InputFloat("Sprite Height (Max: 15, Min: 3)", &spriteHeight);
@@ -655,7 +688,7 @@ int main(int argc, char* argv) {
 			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 
-			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+			//networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
 
 			// This portion breaks the UI a lot idk why
 			//std::vector<Particle> receivedParticles = networkClient.receiveParticles();

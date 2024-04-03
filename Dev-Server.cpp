@@ -320,6 +320,9 @@ void runServer() {
 			clients.push_back(std::move(socket));
 
 			std::cout << "New client connected." << std::endl;
+
+			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
+			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
 		}
 
 		while (true) {
