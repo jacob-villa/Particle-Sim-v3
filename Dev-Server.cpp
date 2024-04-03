@@ -17,9 +17,10 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 #include "stb_image.h"
+#include "json.hpp"
 
-using namespace std;
 using boost::asio::ip::tcp;
+using json = nlohmann::json;
 
 short port = 69696;
 
@@ -225,84 +226,154 @@ static void DrawElements() {
 	);
 	ImVec2 newBorderPos2 = ImVec2(
 		(1280 + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-		(720 + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
-	);
-
-	newBorderPos1.y = 720 - newBorderPos1.y;
-	newBorderPos2.y = 720 - newBorderPos2.y;
-
-	newBorderPos1.x += 50;
-	newBorderPos1.y += 50;
-
-	newBorderPos2.x += 50;
-	newBorderPos2.y += 50;
-
-	ImColor purple = ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f);
-	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), purple);
-	draw_list->AddRectFilled(newBorderPos1, newBorderPos2, ImColor(0, 0, 0, 255));
-
-	float baseParticleRadius = 1.5f;
-	for (const auto& particle : particles) {
-		ImVec2 newPos = ImVec2(
-			(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-			(particle.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
-		);
-
-		newPos.y = 720 - newPos.y;
-
-		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-			newPos.x += 50;
-			newPos.y += 50;
-
-			float scaledParticleRadius = baseParticleRadius * zoomFactor;
-
-			draw_list->AddCircleFilled(newPos, scaledParticleRadius, ImColor(particleColor));
-		}
-	}
-
-	if (currentMode == EXPLORER || explorerSprite) {
-
-		if (explorerSprite) {
-			ImVec2 newPos = ImVec2(
-				(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-				(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+		(720 + translation.y - focusPoint.y)* zoomFactor + focusPoint.y
 			);
 
-			newPos.y = 720 - newPos.y;
+			newBorderPos1.y = 720 - newBorderPos1.y;
+			newBorderPos2.y = 720 - newBorderPos2.y;
 
-			if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-				newPos.x += 50;
-				newPos.y += 50;
+			newBorderPos1.x += 50;
+			newBorderPos1.y += 50;
 
-				float scaledSpriteWidth = spriteWidth * zoomFactor;
-				float scaledSpriteHeight = spriteHeight * zoomFactor;
+			newBorderPos2.x += 50;
+			newBorderPos2.y += 50;
 
-				if (isSpriteImageAvailable) {
-					draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
-						ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
-						ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
-						ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
-				}
-				else {
-					draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+			ImColor purple = ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f);
+			draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), purple);
+			draw_list->AddRectFilled(newBorderPos1, newBorderPos2, ImColor(0, 0, 0, 255));
+
+			float baseParticleRadius = 1.5f;
+			for (const auto& particle : particles) {
+				ImVec2 newPos = ImVec2(
+					(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+					(particle.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+				);
+
+				newPos.y = 720 - newPos.y;
+
+				if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+					newPos.x += 50;
+					newPos.y += 50;
+
+					float scaledParticleRadius = baseParticleRadius * zoomFactor;
+
+					draw_list->AddCircleFilled(newPos, scaledParticleRadius, ImColor(particleColor));
 				}
 			}
-		}
-	}
+
+			if (currentMode == EXPLORER || explorerSprite) {
+
+				if (explorerSprite) {
+					ImVec2 newPos = ImVec2(
+						(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+						(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+					);
+
+					newPos.y = 720 - newPos.y;
+
+					if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+						newPos.x += 50;
+						newPos.y += 50;
+
+						float scaledSpriteWidth = spriteWidth * zoomFactor;
+						float scaledSpriteHeight = spriteHeight * zoomFactor;
+
+						if (isSpriteImageAvailable) {
+							draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
+								ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+								ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
+								ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+						}
+						else {
+							draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+						}
+					}
+				}
+			}
 }
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
-	for (auto &it = begin; it != end; ++it) {
+	for (auto& it = begin; it != end; ++it) {
 		it->UpdatePosition(io);
 	}
 }
 
-std::string serializeParticles(const std::vector<Particle>& particles) {
+json particleToJSON(Particle particle) {
+	json j;
+	j["x"] = particle.x;
+	j["y"] = particle.y;
+	j["angle"] = particle.angle;
+	j["velocity"] = particle.velocity;
+
+	return j;
+}
+
+std::vector<json> serializeParticles(const std::vector<Particle>& particles) {
+	/*
 	std::stringstream ss;
 	for (const auto& particle : particles) {
 		ss << particle.x << "," << particle.y << "," << particle.angle << "," << particle.velocity << "|";
 	}
 	return ss.str();
+
+
+	// Convert object attributes to JSON
+	std::vector<json> particlesJSON;
+
+	for (const auto& particle : particles) {
+		json j = particleToJSON(particle);
+		particlesJSON.push_back(j);
+	}
+	*/
+	json particlesJSON;
+
+	for (const auto& particle : particles) {
+		particlesJSON.push_back({
+			{"x", particle.x},
+			{"y", particle.y},
+			{"angle", particle.angle},
+			{"velocity", particle.velocity}
+		});
+	}
+
+	return particlesJSON;
+}
+
+void sendParticles(const std::vector<Particle>& particles, std::vector<tcp::socket> clients) {
+	try {
+		// Convert all particles in server into JSON
+		// Send JSON to all clients
+
+		// Approach 1: Send 1 single JSON where each field is an array of values
+		std::vector<int> xValues;
+		std::vector<int> yValues;
+		std::vector<int> angleValues;
+		std::vector<int> velocityValues;
+
+		for (const auto& particle : particles) {
+			xValues.push_back(particle.x);
+			yValues.push_back(particle.y);
+			angleValues.push_back(particle.angle);
+			velocityValues.push_back(particle.velocity);
+		}
+
+		json j;
+		j["x"] = xValues;
+		j["y"] = yValues;
+		j["angle"] = angleValues;
+		j["velocity"] = velocityValues;
+
+		std::string serializedParticles = j.dump();
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(serializedParticles));
+		}
+
+		// Approach 2: Send 1 JSON per particle
+
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
+	}
 }
 
 void runServer() {
@@ -314,7 +385,7 @@ void runServer() {
 
 		std::vector<tcp::socket> clients;
 
-		for (;;) {
+		while (true) {
 			tcp::socket socket(io_context);
 			acceptor.accept(socket);
 			clients.push_back(std::move(socket));
@@ -324,14 +395,6 @@ void runServer() {
 			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
 			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
 		}
-
-		while (true) {
-			std::string serializedData = serializeParticles(particles);
-			for (auto& socket : clients) {
-				boost::asio::write(socket, boost::asio::buffer(serializedData));
-			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
@@ -340,6 +403,7 @@ void runServer() {
 
 int main(int argc, char *argv) {
 	std::thread serverThread(runServer);
+
 
 	if (!glfwInit()) {
 		std::cout << "Failed to initialize GLFW" << std::endl;
