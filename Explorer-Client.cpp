@@ -447,7 +447,7 @@ public:
 		return receivedParticles;
 	}
 
-	void startAsyncReceiveParticles() {
+	void startAsyncReceive() {
 		std::thread receiveThread([this]() {
 			while (true) {
 				// Wait for particle data to be available on the socket
@@ -455,17 +455,28 @@ public:
 					[this](const boost::system::error_code& error) {
 						if (!error) {
 							// Data is available, proceed to read the message
-							std::string receivedParticlesMsg = receiveMessage(socket);
-							std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedParticlesMsg);
+							std::string receivedMsg = receiveMessage(socket);
 
-							// Mutex lock the particles when accessing and modifying
-							std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
-							if (!checkParticlesConsistency(receivedParticles)) {
-								std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
+							// Message for particle will contain "Particles\n" at the head
+							if (receivedMsg.find("Particles\n") != std::string::npos) {
+								// Remove the "Particles\n" string from the message
+								receivedMsg.erase(0, 10);
 
-								particles = receivedParticles;
+								// Deserialize the message to a vector of particles
+								std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedMsg);
+
+								// Mutex lock the particles when accessing and modifying
+								std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+								if (!checkParticlesConsistency(receivedParticles)) {
+									std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
+
+									particles = receivedParticles;
+								}
+								particleVectorLock.unlock();
 							}
-							particleVectorLock.unlock();
+							else {
+								std::cout << "No particle indicator found at start of message." << std::endl;
+							}
 						}
 						else {
 							std::cerr << "Error waiting for data: " << error.message() << std::endl;
@@ -522,7 +533,7 @@ bool checkParticlesConsistency(std::vector<Particle>& serverParticles) {
 int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
 
-	networkClient.startAsyncReceiveParticles();
+	networkClient.startAsyncReceive();
 
 	/*
 	std::string serverMessage = networkClient.receiveMessage();
