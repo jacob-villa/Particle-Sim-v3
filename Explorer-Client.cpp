@@ -450,17 +450,30 @@ public:
 	void startAsyncReceiveParticles() {
 		std::thread receiveThread([this]() {
 			while (true) {
-				std::string receivedParticlesMsg = receiveMessage(socket);
-				std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedParticlesMsg);
+				// Wait for particle data to be available on the socket
+				socket.async_wait(boost::asio::ip::tcp::socket::wait_read,
+					[this](const boost::system::error_code& error) {
+						if (!error) {
+							// Data is available, proceed to read the message
+							std::string receivedParticlesMsg = receiveMessage(socket);
+							std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedParticlesMsg);
 
-				// Mutex lock the particles when accessing and modifying
-				std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
-				if (!checkParticlesConsistency(receivedParticles)) {
-					std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
+							// Mutex lock the particles when accessing and modifying
+							std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+							if (!checkParticlesConsistency(receivedParticles)) {
+								std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
 
-					particles = receivedParticles;
-				}
-				particleVectorLock.unlock();
+								particles = receivedParticles;
+							}
+							particleVectorLock.unlock();
+						}
+						else {
+							std::cerr << "Error waiting for data: " << error.message() << std::endl;
+						}
+					});
+
+				// Run the io_context to process the async operation
+				ioContext.run();
 
 				// 1 second = 1000 ms
 				std::this_thread::sleep_for(std::chrono::milliseconds(5000));
