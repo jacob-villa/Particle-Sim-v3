@@ -10,6 +10,7 @@
 #include <cmath>
 #include <random>
 #include <future>
+#include <mutex>
 
 #include <boost/asio.hpp>
 
@@ -18,9 +19,10 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 #include "stb_image.h"
+#include "json.hpp"
 
-using namespace std;
 using boost::asio::ip::tcp;
+using json = nlohmann::json;
 
 enum Mode {
 	DEVELOPER,
@@ -48,6 +50,32 @@ float scaleFactorWidth = 1280.0f / 19.0f;
 float scaleFactorHeight = 720.0f / 33.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
+
+//std::string getCurrentDate() {
+//	auto now = std::chrono::system_clock::now();
+//
+//	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+//
+//	std::tm* timeInfo = std::localtime(&currentTime);
+//
+//	char buffer[20];
+//	std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
+//
+//	return std::string(buffer);
+//}
+//
+//std::string getCurrentTime() {
+//	auto now = std::chrono::system_clock::now();
+//
+//	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+//
+//	std::tm* timeInfo = std::localtime(&currentTime);
+//
+//	char buffer[9]; // Buffer to store the formatted time (HH:MM:SS)
+//	std::strftime(buffer, 9, "%H:%M:%S", timeInfo);
+//
+//	return std::string(buffer);
+//}
 
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
@@ -144,6 +172,26 @@ public:
 		x = std::max(0.0f, std::min(1280.0f, x));
 		y = std::max(0.0f, std::min(720.0f, y));
 	}
+
+	json toJSON() const {
+		json j;
+		j["x"] = x;
+		j["y"] = y;
+		j["angle"] = angle;
+		j["velocity"] = velocity;
+		return j;
+	}
+
+	static Particle fromJSON(const json& j) {
+		return Particle(j["x"].get<float>(),
+			j["y"].get<float>(),
+			j["angle"].get<float>(),
+			j["velocity"].get<float>());
+	}
+
+	bool equals(Particle& other) {
+		return x == other.x && y == other.y && angle == other.angle && velocity == other.velocity;
+	}
 };
 
 std::vector<Particle> particles;
@@ -169,6 +217,23 @@ public:
 		y = std::max(0.0f, std::min(720.0f, y));
 
 		//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl; // for debugging
+	}
+
+	json toJSON() const {
+		json j;
+		j["x"] = x;
+		j["y"] = y;
+		j["speed"] = speed;
+		return j;
+	}
+
+	static Sprite fromJSON(const json& j) {
+		GLuint textureID;
+
+		return Sprite(j["x"].get<float>(),
+			j["y"].get<float>(),
+			j["speed"].get<float>(),
+			textureID);
 	}
 };
 
@@ -300,6 +365,11 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 
 class NetworkClient {
 public:
+	boost::asio::io_context ioContext;
+	boost::asio::ip::tcp::socket socket;
+
+	std::mutex particlesMutex;
+
 	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
 		: ioContext(), socket(ioContext) {
 		boost::asio::ip::tcp::resolver resolver(ioContext);
@@ -308,10 +378,11 @@ public:
 	}
 
 	void sendPosition(float x, float y) {
-		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
+		std::string message = std::to_string(x) + " " + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
+		std::cout << "Message Sent" << std::endl;
 	}
-
+	// Not using this for now
 	std::vector<Particle> receiveParticles() {
 		std::vector<Particle> receivedParticles;
 		constexpr size_t bufferSize = 1024;
@@ -340,20 +411,22 @@ public:
 		return receivedParticles;
 	}
 
-	std::string receiveMessage() {
+	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
+		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
-		char buffer[bufferSize];
+		//char buffer[bufferSize];
+		std::array<char, bufferSize> buffer;
 		std::string message;
 
 		try {
 			boost::system::error_code error;
-			size_t length = socket.read_some(boost::asio::buffer(buffer, bufferSize), error);
+			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 
 			if (error) {
 				throw boost::system::system_error(error);
 			}
 			else {
-				message = std::string(buffer, length);
+				message = std::string(buffer.data(), length);
 			}
 		}
 		catch (const std::exception& e) {
@@ -363,21 +436,97 @@ public:
 		return message;
 	}
 
+	std::vector<Particle> deserializeParticleMessage(const std::string& jsonString) {
+
+		std::vector<Particle> receivedParticles;
+
+		json j = json::parse(jsonString);
+		for (const auto& particleJson : j) {
+			receivedParticles.push_back(Particle::fromJSON(particleJson));
+		}
+
+		return receivedParticles;
+	}
+
+	//void startAsyncReceiveParticles() {
+	//	std::thread receiveThread([this]() {
+	//		while (true) {
+	//			std::string receivedParticlesMsg = receiveMessage(socket);
+	//			std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedParticlesMsg);
+
+	//			// Mutex lock the particles when accessing and modifying
+	//			std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+	//			if (!checkParticlesConsistency(receivedParticles)) {
+	//				std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
+
+	//				particles = receivedParticles;
+	//			}
+	//			particleVectorLock.unlock();
+
+	//			// 1 second = 1000 ms
+	//			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+	//		}
+	//		});
+	//	receiveThread.detach();
+	//}
+
+	/*
+	std::vector<Sprite> deserializeSpriteMessage(const std::string& jsonString) {
+
+		std::vector<Particle> receivedSprites;
+
+		json j = json::parse(jsonString);
+		for (const auto& particleJson : j) {
+			receivedSprites.push_back(Sprite::fromJSON(particleJson));
+		}
+
+		return receivedSprites;
+	}
+
+	void receiveSpritesAsync(boost::asio::ip::tcp::socket& socket) {
+		while (true) {
+			std::string receivedSpritesMsg = receiveMessage(socket);
+			std::vector<Sprite> receivedSprites = deserializeSpriteMessage(receivedSpritesMsg);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+	}
+	*/
+
+
 private:
-	boost::asio::io_context ioContext;
-	boost::asio::ip::tcp::socket socket;
+	// Moved ioContext and socket to public
 };
 
-int main(int argc, char* argv) {
+bool checkParticlesConsistency(std::vector<Particle>& serverParticles) {
 
+	for (int i = 0; i < serverParticles.size(); i++) {
+		if (!(serverParticles[i].equals(particles[i]))) {
+			return false;
+		}
+	}
+	return true;
+}
+
+int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
 
+	//networkClient.startAsyncReceiveParticles();
+
+	/*
 	std::string serverMessage = networkClient.receiveMessage();
 	if (!serverMessage.empty()) {
 		std::cout << "Received message from server: " << serverMessage << std::endl;
 		// Process the message
 	}
 
+	// Launch separate thread for receiving particles
+	std::thread listenforParticlesThread(receiveParticlesAsync, std::ref(networkClient::socket));
+	listenforParticlesThread.detach();
+
+	// Launch separate thread for receiving sprites
+	std::thread listenforSpritesThread(receiveSpritesAsync, std::ref(networkClient::socket));
+	listenforSpritesThread.detach();
+	*/
 	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 
 	if (!glfwInit()) {
@@ -490,14 +639,14 @@ int main(int argc, char* argv) {
 		if (ImGui::GetIO().Fonts->Fonts.Size > 0) {
 			ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
 
-			ImGui::Text("Particle Physics Simulator V2");
+			ImGui::Text("Particle Physics Simulator V3");
 			ImGui::Text("STDISCM - S12");
 			ImGui::Text("Joshua Ejercito, Ryan Go, Anton Morana, Jacob Villa");
 
 			ImGui::PopFont();
 		}
 		else {
-			ImGui::Text("Particle Physics Simulator V2");
+			ImGui::Text("Particle Physics Simulator V3");
 			ImGui::Text("STDISCM - S12");
 			ImGui::Text("Joshua Ejercito, Ryan Go, Anton Morana, Jacob Villa");
 		}
@@ -687,8 +836,8 @@ int main(int argc, char* argv) {
 			if (keyA) explorerSprite->Move(-moveSpeed, 0); // Move left
 			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
-
-			//networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+			std::cout << explorerSprite->x << explorerSprite->y << std::endl;
+			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
 
 			// This portion breaks the UI a lot idk why
 			//std::vector<Particle> receivedParticles = networkClient.receiveParticles();

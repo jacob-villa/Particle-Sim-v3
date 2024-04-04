@@ -47,7 +47,8 @@ float spriteHeight = 5.0f;
 float zoomFactor = 1.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
-
+//Clients global
+std::vector<tcp::socket> clientsGlobal;
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
 
@@ -305,6 +306,48 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	return ss.str();
 }
 
+void receiveMovement() {
+	constexpr size_t bufferSize = 1024;
+	char buffer[bufferSize];
+	std::string message;
+	if (clientsGlobal.size() > 0) {
+		try {
+			boost::system::error_code error;
+			size_t length = clientsGlobal[0].read_some(boost::asio::buffer(buffer, bufferSize), error);
+
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				message = std::string(buffer, length);
+				std::cout << message << endl;
+				std::istringstream iss(message);
+
+				std::string firstWord, secondWord;
+
+				// Extract the first word
+				iss >> firstWord;
+
+				// Extract the second word
+				iss >> secondWord;
+
+				float new_x = std::stof(firstWord);
+				float new_y = std::stof(secondWord);
+				std::cout << new_x << endl;
+				std::cout << new_y << endl;
+				explorerSprite->x = new_x;
+				explorerSprite->y = new_y;
+			}
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error receiving message: " << e.what() << std::endl;
+			std::cout << "Went to catch" << endl;
+		}
+	}
+
+
+}
+
 void runServer() {
 	try {
 		boost::asio::io_context io_context;
@@ -318,7 +361,7 @@ void runServer() {
 			tcp::socket socket(io_context);
 			acceptor.accept(socket);
 			clients.push_back(std::move(socket));
-
+			clientsGlobal.push_back(std::move(socket));
 			std::cout << "New client connected." << std::endl;
 
 			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
@@ -340,7 +383,6 @@ void runServer() {
 
 int main(int argc, char *argv) {
 	std::thread serverThread(runServer);
-
 	if (!glfwInit()) {
 		std::cout << "Failed to initialize GLFW" << std::endl;
 		std::cin.get();
@@ -398,6 +440,7 @@ int main(int argc, char *argv) {
 	std::string loadImageMessage = "";
 
 	while (!glfwWindowShouldClose(window)) {
+		receiveMovement();
 		double currentTime = glfwGetTime();
 
 		glfwPollEvents();
