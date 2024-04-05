@@ -30,8 +30,6 @@ enum Mode {
 	EXPLORER
 };
 
-static std::string STR_END = "_END";
-
 static GLFWwindow* window = nullptr;
 float PI = 3.14159265359;
 
@@ -410,7 +408,7 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 
 void sendParticles(std::vector<tcp::socket>& clients) {
 	try {
-		std::string particleMessage = serializeParticles(particles) + STR_END;
+		std::string particleMessage = serializeParticles(particles);
 
 		for (auto& client : clients) {
 			boost::asio::write(client, boost::asio::buffer(particleMessage));
