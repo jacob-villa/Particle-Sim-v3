@@ -49,6 +49,19 @@ float zoomFactor = 1.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
 
+std::string getTimestamp() {
+	auto now = std::chrono::system_clock::now();
+	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+	std::tm* timeInfo = std::localtime(&currentTime);
+
+	char buffer[29];
+
+	std::strftime(buffer, 29, "%Y-%m-%d %H:%M:%S", timeInfo);
+
+
+	return std::string(buffer);
+}
+
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
 
@@ -358,25 +371,21 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	std::string serializedParticles = j.dump();
 
 	// Inserting identifier
-	//serializedParticles.insert(0, "Particles\n");
+	serializedParticles.insert(0, "Particles\n");
 
 	// Insert \0 at end of message
-	serializedParticles.push_back('\0');
-
+	//serializedParticles.push_back('\0');
 
 	return serializedParticles;
 }
 
-void sendParticles(tcp::socket client) {
+void sendParticles(std::vector<tcp::socket> clients) {
 	try {
-		//std::string particleMessage = serializeParticles(particles);
-		Particle p = Particle(640, 360, 0, 100);
-		std::string particleMessage = p.toJSON().dump();
-		particleMessage.append("\0");
+		std::string particleMessage = serializeParticles(particles);
 
-		//for (auto& client : clients) {
-		boost::asio::write(client, boost::asio::buffer(particleMessage));
-		//}
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(particleMessage));
+		}
 
 	}
 	catch (std::exception& e) {
@@ -417,8 +426,8 @@ void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::ac
 			std::cout << "New client connected." << std::endl;
 			clients.push_back(std::move(socket));
 			
-			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
-			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
+			/*std::string welcomeMessage = "Welcome to the particle simulator server!\n";
+			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));*/
 
 			// Continue accepting new clients
 			acceptClients(io_context, acceptor, clients);
@@ -429,14 +438,13 @@ void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::ac
 	});
 }
 
-void runServer() {
+
+void runServer(std::vector<tcp::socket> clients) {
 	try {
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
 		std::cout << "Server started on port " << port << std::endl;
-
-		std::vector<tcp::socket> clients;
 
 		while (true) {
 			tcp::socket socket(io_context);
@@ -445,11 +453,14 @@ void runServer() {
 
 			std::cout << "New client connected." << std::endl;
 
+			/*
+			* this was causing the error, it would send the welcome msg AND the particles, so it would try to read this welcome msg as a json
 			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
 			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
-			
-			std::string particleMessage = serializeParticles(particles);
-			boost::asio::write(clients.back(), boost::asio::buffer(particleMessage));
+			*/
+			/*std::string particleMessage = serializeParticles(particles);
+			boost::asio::write(clients.back(), boost::asio::buffer(particleMessage));*/
+			sendParticles(clients);
 		}
 	}
 	catch (std::exception& e) {
@@ -483,7 +494,10 @@ void runServer() {
 //}
 
 int main(int argc, char *argv) {
-	std::thread serverThread(runServer);
+
+	std::vector<tcp::socket> clients;
+
+	std::thread serverThread(runServer, clients);
 
 
 	if (!glfwInit()) {

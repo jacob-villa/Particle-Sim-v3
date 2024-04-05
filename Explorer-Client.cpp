@@ -50,33 +50,20 @@ float scaleFactorWidth = 1280.0f / 19.0f;
 float scaleFactorHeight = 720.0f / 33.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
-/*
-std::string getCurrentDate() {
+
+std::string getTimestamp() {
 	auto now = std::chrono::system_clock::now();
-
 	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-
 	std::tm* timeInfo = std::localtime(&currentTime);
 
-	char buffer[20];
-	std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
+	char buffer[29];
+
+	std::strftime(buffer, 29, "%Y-%m-%d %H:%M:%S", timeInfo);
+
 
 	return std::string(buffer);
 }
 
-std::string getCurrentTime() {
-	auto now = std::chrono::system_clock::now();
-
-	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-
-	std::tm* timeInfo = std::localtime(&currentTime);
-
-	char buffer[9]; // Buffer to store the formatted time (HH:MM:SS)
-	std::strftime(buffer, 9, "%H:%M:%S", timeInfo);
-
-	return std::string(buffer);
-}
-*/
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
 
@@ -365,10 +352,21 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 	}
 }
 
-void updateParticlesFromServer(std::vector<Particle>& receivedParticles) {
-	for (int i = 0; i < receivedParticles.size(); i++) {
-		particles[i] = receivedParticles[i];
+bool checkParticlesConsistency(std::vector<Particle>& serverParticles) {
+
+	if (serverParticles.size() != particles.size())
+		return false;
+
+	for (int i = 0; i < serverParticles.size(); i++) {
+		if (!(serverParticles[i].equals(particles[i]))) {
+			return false;
+		}
 	}
+	return true;
+}
+
+void updateParticlesFromServer(std::vector<Particle>& receivedParticles) {
+	particles = receivedParticles;
 }
 
 
@@ -394,9 +392,8 @@ public:
 	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
 		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
-		//char buffer[bufferSize];
 		std::array<char, bufferSize> buffer;
-		//char buffer[1];
+
 		std::string message;
 
 		try {
@@ -411,6 +408,7 @@ public:
 					message = std::string(buffer.data(), length);
 					break;
 				}
+				// The \0 appended approach to string reading:
 				//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
 
 				//if (error) {
@@ -438,68 +436,46 @@ public:
 
 		std::vector<Particle> particleVector;
 
+		std::cout << "jsonString input: " << jsonString << std::endl;
+
 		try {
 			json jsonParticles = json::parse(jsonString);
 
 			// Validate JSON structure
-			if (!jsonParticles.is_array() || jsonParticles.empty()) {
-				std::cerr << "Error: Invalid JSON structure." << std::endl;
-				return particleVector; // Return empty vector on error
+			if (jsonParticles.empty()) {
+				std::cerr << "Error: Empty particles." << std::endl;
+				// Return empty vector on error
+				return particleVector;
 			}
 
-			for (const auto& particleJson : jsonParticles) {
-				if (!particleJson.is_object() || !particleJson.contains("x") || !particleJson.contains("y") ||
-					!particleJson.contains("angle") || !particleJson.contains("velocity")) {
-					std::cerr << "Error: Invalid particle JSON object." << std::endl;
-					continue; // Skip this particle and continue with the next
+			std::vector<json> xValues = jsonParticles["x"];
+			std::vector<json> yValues = jsonParticles["y"];
+			std::vector<json> angleValues = jsonParticles["angle"];
+			std::vector<json> velocityValues = jsonParticles["velocity"];
+
+			// Ensure all arrays have the same size
+			if (xValues.size() == yValues.size() &&
+				xValues.size() == angleValues.size() &&
+				xValues.size() == velocityValues.size()) {
+				for (size_t i = 0; i < xValues.size(); ++i) {
+					float x = xValues[i];
+					float y = yValues[i];
+					float angle = angleValues[i];
+					float velocity = velocityValues[i];
+
+					//std::cout << "Particle #" << i << ": " << x << " " << y << " " << angle << " " << velocity << std::endl;
+
+					particleVector.emplace_back(x, y, angle, velocity);
 				}
-
-				float x = particleJson["x"].get<float>();
-				float y = particleJson["y"].get<float>();
-				float angle = particleJson["angle"].get<float>();
-				float velocity = particleJson["velocity"].get<float>();
-
-				particleVector.emplace_back(x, y, angle, velocity);
+			}
+			else {
+				// Handle the case where the arrays are not the same size
+				std::cerr << "Error: JSON arrays are not the same size." << std::endl;
 			}
 		}
 		catch (const std::exception& e) {
 			std::cerr << "Error deserializing particle message: " << e.what() << std::endl;
 		}
-		//json jsonParticles = json::parse(jsonString);
-		//std::cout << "jsonParticles size: " << jsonParticles.size() << std::endl;
-		//std::cout << "jsonParticles: " << jsonParticles << std::endl;
-
-		//// Assuming the JSON object has arrays for "x", "y", "angle", and "velocity"
-		//std::vector<json> xValues = jsonParticles["x"];
-		//std::vector<json> yValues = jsonParticles["y"];
-		//std::vector<json> angleValues = jsonParticles["angle"];
-		//std::vector<json> velocityValues = jsonParticles["velocity"];
-
-
-		//// Ensure all arrays have the same size
-		//if (xValues.size() == yValues.size() &&
-		//	xValues.size() == angleValues.size() &&
-		//	xValues.size() == velocityValues.size()) {
-
-
-		//	for (size_t i = 0; i < xValues.size(); ++i) {
-		//		float x = xValues[i];
-		//		float y = yValues[i];
-		//		float angle = angleValues[i];
-		//		float velocity = velocityValues[i];
-
-		//		std::cout << "Particle #" << i << ": " << x << " " << y << " " << angle << " " << velocity << std::endl;
-
-		//		// Create a Particle object and add it to the vector
-		//		particleVector.emplace_back(x, y, angle, velocity);
-		//	}
-		//}
-		//else {
-		//	// Handle the case where the arrays are not the same size
-		//	std::cerr << "Error: JSON arrays are not the same size." << std::endl;
-		//}
-
-
 
 		return particleVector;
 	}
@@ -516,17 +492,6 @@ public:
 
 							std::cout << "Received msg: " << receivedMsg << std::endl;
 
-							std::vector<Particle> newParticles;
-							newParticles = deserializeParticleMessage(receivedMsg);
-							std::cout << "receivedParticleVector size: " << newParticles.size() << std::endl;
-
-							//updateParticlesFromServer(receivedParticleVector);		
-							// Print particles received
-							for (const auto& particle : newParticles) {
-								std::cout << "Particle: (" << particle.x << ", " << particle.y << ", " << particle.angle << ", " << particle.velocity << ")" << std::endl;
-							}
-
-							/*
 							// Message for particle will contain "Particles\n" at the head
 							if (receivedMsg.find("Particles\n") != std::string::npos) {
 								// Remove the "Particles\n" string from the message
@@ -538,16 +503,18 @@ public:
 								// Mutex lock the particles when accessing and modifying
 								std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
 								if (!checkParticlesConsistency(receivedParticles)) {
-									std::cout << getCurrentDate() << " " << getCurrentTime() << " Particles are inconsistent." << std::endl;
+									std::cout << getTimestamp() << ": Particles are inconsistent." << std::endl;
 
 									particles = receivedParticles;
 								}
 								particleVectorLock.unlock();
+
+								std::cout << "Particle count: " << particles.size() << std::endl;
 							}
+							// This else block will handle receiving a message with "Sprite\n" at the start
 							else {
 								std::cout << "No particle indicator found at start of message." << std::endl;
 							}
-							*/
 						}
 						else {
 							std::cerr << "Error waiting for data: " << error.message() << std::endl;
@@ -590,16 +557,6 @@ public:
 private:
 	// Moved ioContext and socket to public
 };
-
-bool checkParticlesConsistency(std::vector<Particle>& serverParticles) {
-
-	for (int i = 0; i < serverParticles.size(); i++) {
-		if (!(serverParticles[i].equals(particles[i]))) {
-			return false;
-		}
-	}
-	return true;
-}
 
 int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
