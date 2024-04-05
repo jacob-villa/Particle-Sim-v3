@@ -421,42 +421,68 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 //	io_context.run();
 //}
 
-void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
-	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
-		try {
-			if (!error) {
-				std::cout << "New client connected." << std::endl;
-				clients.push_back(std::move(socket));
+//void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
+//	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
+//		try {
+//			if (!error) {
+//				std::cout << "New client connected." << std::endl;
+//				clients.push_back(std::move(socket));
+//
+//				//sendParticles(clients);
+//				
+//				// Continue accepting new clients
+//				acceptClients(io_context, acceptor, std::ref(clients));
+//			}
+//		}
+//		catch (std::exception& e) {
+//			std::cerr << "Exception in server: " << e.what() << "\n";
+//		}
+//	}
+//		
+//	);
+//}
 
-				//sendParticles(clients);
-				
-				// Continue accepting new clients
-				acceptClients(io_context, acceptor, std::ref(clients));
+void handleClient(boost::asio::ip::tcp::socket& socket) {
+	std::array<char, 1024> buffer;
+	socket.async_read_some(boost::asio::buffer(buffer),
+		[&socket, &buffer](boost::system::error_code ec, std::size_t bytes_transferred) {
+			if (!ec) {
+				std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+
+				// Continue reading from the client
+				handleClient(socket);
+			} else {
+				std::cerr << "Error reading from client: " << ec.message() << std::endl;
 			}
-		}
-		catch (std::exception& e) {
-			std::cerr << "Exception in server: " << e.what() << "\n";
-		}
-	}
-		
-	);
+		});
 }
-
 
 void runServer(std::vector<tcp::socket>& clients) {
 	try {
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
-		std::cout << "Server started on port " << port << std::endl;
+		std::cout << "Server listening...on port: " << port << std::endl;
 
 		// Start accepting clients in a separate thread
-		std::thread acceptClientsThread([&]() {
-			acceptClients(io_context, acceptor, std::ref(clients));
-			// This starts the async process
-			io_context.run();
+		acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
+			if (!error) {
+				std::cout << "New client connected." << std::endl;
+				clients.push_back(std::move(socket));
+
+				sendParticles(clients);
+
+				std::thread clientThread(handleClient, std::ref(clients.back()));
+				clientThread.detach();
+
+				runServer(clients);
+			}
+			else {
+				std::cerr << "Error accepting client: " << error.message() << std::endl;
+			}
 		});
-		acceptClientsThread.detach();
+
+		io_context.run();
 
 		// Start the periodic sending in a separate thread
 		//std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
