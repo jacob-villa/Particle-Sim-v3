@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <iostream>
@@ -378,6 +377,8 @@ public:
 
 	std::mutex particlesMutex;
 
+	int clientID;
+
 	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
 		: ioContext(), socket(ioContext) {
 		boost::asio::ip::tcp::resolver resolver(ioContext);
@@ -437,10 +438,23 @@ public:
 
 		std::vector<Particle> particleVector;
 
-		std::cout << "jsonString input: " << jsonString << std::endl;
+		//std::cout << "jsonString input: " << jsonString << std::endl;
+
+		std::string message;
+
+		// Iterate over jsonString per character
+		for (int i = 0; i < jsonString.length(); i++) {
+			if (jsonString[i] != '|') {
+				message.push_back(jsonString[i]);
+			}
+			else {
+				message.clear();
+			}
+		}
+		std::cout << "message: " << message << std::endl;
 
 		try {
-			json jsonParticles = json::parse(jsonString);
+			json jsonParticles = json::parse(message);
 
 			// Validate JSON structure
 			if (jsonParticles.empty()) {
@@ -491,30 +505,34 @@ public:
 							// Data is available, proceed to read the message
 							std::string receivedMsg = receiveMessage(socket);
 
-							std::cout << "Received msg: " << receivedMsg << std::endl;
+							//std::cout << "Received msg: " << receivedMsg << std::endl;
 
 							// Message for particle will contain "Particles\n" at the head
-							if (receivedMsg.find("Particles\n") != std::string::npos) {
+							//if (receivedMsg.find("Particles\n") != std::string::npos) {
 								// Remove the "Particles\n" string from the message
-								receivedMsg.erase(0, 10);
+								//receivedMsg.erase(receivedMsg.find("Particles\n"), 10);
+							std::cout << "receivedMsg: " << receivedMsg << std::endl;
 
-								// Deserialize the message to a vector of particles
-								std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedMsg);
+							// Deserialize the message to a vector of particles
+							std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedMsg);
 
-								// Mutex lock the particles when accessing and modifying
-								std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
-								if (!checkParticlesConsistency(receivedParticles)) {
-									std::cout << getTimestamp() << ": Particles are inconsistent." << std::endl;
+							// Mutex lock the particles when accessing and modifying
+							std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+							if (!checkParticlesConsistency(receivedParticles)) {
+								std::cout << getTimestamp() << ": Particles are inconsistent." << std::endl;
 
-									particles = receivedParticles;
-								}
-								particleVectorLock.unlock();
-
-								std::cout << "Particle count: " << particles.size() << std::endl;
+								particles = receivedParticles;
 							}
+							particleVectorLock.unlock();
+
+							std::cout << "Particle count: " << particles.size() << std::endl;
+							//}
 							// This else block will handle receiving a message with "Sprite\n" at the start
-							else {
-								std::cout << "No particle indicator found at start of message." << std::endl;
+							//else
+							if (receivedMsg.find("ID\n") != std::string::npos) {
+								// get the id from the msg
+								receivedMsg.erase(0, 3);
+								clientID = stoi(receivedMsg);
 							}
 						}
 						else {

@@ -180,7 +180,9 @@ public:
 	}
 };
 
+int clientCtr = 0;
 std::vector<Particle> particles;
+
 
 class Sprite {
 public:
@@ -188,7 +190,7 @@ public:
 	float speed;
 	GLuint textureID;
 
-	Sprite(float x, float y, float speed, GLuint textureID) : x(x), y(y), speed(speed), textureID(textureID) {}
+	Sprite(float x, float y, float speed, GLuint textureID) : speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -204,9 +206,33 @@ public:
 
 		//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl; // for debugging
 	}
+
+	json toJSON() const {
+		json j;
+		j["x"] = x;
+		j["y"] = y;
+		j["speed"] = speed;
+		return j;
+	}
+
+	static Sprite fromJSON(const json& j) {
+		GLuint textureID;
+
+		return Sprite(j["x"].get<float>(),
+			j["y"].get<float>(),
+			j["speed"].get<float>(),
+			textureID);
+	}
+
+	void setPos(float newX, float newY) {
+		x = newX;
+		y = newY;
+	}
 };
 
-Sprite* explorerSprite = nullptr; // Global pointer to the explorer sprite
+std::vector<Sprite> clientSprites;
+
+//Sprite* explorerSprite = nullptr; // Global pointer to the explorer sprite
 
 static void SpawnRandomParticle() {
 	std::random_device rd;
@@ -253,10 +279,10 @@ static void DrawElements() {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 	ImVec2 translation = ImVec2(0, 0);
-	if (currentMode == EXPLORER && explorerSprite) {
+	/*if (currentMode == EXPLORER && explorerSprite) {
 		translation.x = 640 - explorerSprite->x;
 		translation.y = 360 - explorerSprite->y;
-	}
+	}*/
 
 	float scaledBorderWidth = 1280 * zoomFactor; 
 	float scaledBorderHeight = 720 * zoomFactor; 
@@ -302,7 +328,7 @@ static void DrawElements() {
 				}
 			}
 
-			if (currentMode == EXPLORER || explorerSprite) {
+			/*if (currentMode == EXPLORER || explorerSprite) {
 
 				if (explorerSprite) {
 					ImVec2 newPos = ImVec2(
@@ -330,7 +356,7 @@ static void DrawElements() {
 						}
 					}
 				}
-			}
+			}*/
 }
 
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
@@ -372,10 +398,10 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	std::string serializedParticles = j.dump();
 
 	// Inserting identifier
-	serializedParticles.insert(0, "Particles\n");
+	//serializedParticles.insert(0, "Particles\n");
 
-	// Insert \0 at end of message
-	//serializedParticles.push_back('\0');
+	// Insert | at end of message
+	serializedParticles.push_back('|');
 
 	return serializedParticles;
 }
@@ -421,27 +447,6 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	io_context.run();
 }
 
-//void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
-//	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
-//		try {
-//			if (!error) {
-//				std::cout << "New client connected." << std::endl;
-//				clients.push_back(std::move(socket));
-//
-//				//sendParticles(clients);
-//				
-//				// Continue accepting new clients
-//				acceptClients(io_context, acceptor, std::ref(clients));
-//			}
-//		}
-//		catch (std::exception& e) {
-//			std::cerr << "Exception in server: " << e.what() << "\n";
-//		}
-//	}
-//		
-//	);
-//}
-
 void handleClient(boost::asio::ip::tcp::socket& socket) {
 	std::array<char, 1024> buffer;
 	socket.async_read_some(boost::asio::buffer(buffer),
@@ -468,7 +473,23 @@ void runServer(std::vector<tcp::socket>& clients) {
 		acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
 			if (!error) {
 				std::cout << "New client connected." << std::endl;
+				// mutex lock
 				clients.push_back(std::move(socket));
+				// unlock
+
+				// mutex lock
+				clientCtr++;
+				// unlock
+
+				GLuint explorerTexture;
+				LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
+				Sprite newSprite = Sprite(400, 200, 100.0f, explorerTexture);
+
+				clientSprites.push_back(newSprite);
+
+				// Send client its ID
+				std::string IDMsg = "ID\n" + std::to_string(clientCtr);
+				//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
 
 				sendParticles(clients);
 
@@ -494,6 +515,8 @@ void runServer(std::vector<tcp::socket>& clients) {
 int main(int argc, char *argv) {
 
 	std::vector<tcp::socket> clients;
+
+	
 
 	std::thread serverThread(runServer, std::ref(clients));
 
@@ -553,7 +576,7 @@ int main(int argc, char *argv) {
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
 
-	explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // change sprite speed and initial position here
+	//explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // change sprite speed and initial position here
 	char imagePath[256] = "";
 
 	std::string loadImageMessage = "";
@@ -668,11 +691,13 @@ int main(int argc, char *argv) {
 			ImGui::SameLine();
 			if (ImGui::Button("Spawn Random Particle")) {
 				SpawnRandomParticle();
+				sendParticles(std::ref(clients));
 			}
 			ImGui::SameLine();
 			
 			if (ImGui::Button("Reset Particles")) {
 				particles.clear();
+				sendParticles(std::ref(clients));
 			}
 			if (showErrorPopup) {
 				ImGui::OpenPopup("Invalid Input");
@@ -759,6 +784,7 @@ int main(int argc, char *argv) {
 					}
 					//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 				}
+				sendParticles(std::ref(clients));
 			}
 		}
 		else {
@@ -823,14 +849,6 @@ int main(int argc, char *argv) {
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) keyD = true;
 		else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE) keyD = false;
 
-		if (currentMode == EXPLORER && explorerSprite) {
-			float moveSpeed = explorerSprite->speed / io.Framerate;
-			if (keyW) explorerSprite->Move(0, -moveSpeed); // Move up
-			if (keyA) explorerSprite->Move(-moveSpeed, 0); // Move left
-			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
-			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
-		}
-
 		ImGui::PopStyleColor(4);
 
 		ImGui::End();
@@ -875,11 +893,11 @@ int main(int argc, char *argv) {
 
 	serverThread.join();
 
-	if (explorerSprite) {
+	/*if (explorerSprite) {
 		glDeleteTextures(1, &explorerSprite->textureID);
 		delete explorerSprite;
 		explorerSprite = nullptr;
-	}
+	}*/
 
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
