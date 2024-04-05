@@ -369,7 +369,10 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 
 void sendParticles(tcp::socket client) {
 	try {
-		std::string particleMessage = serializeParticles(particles);
+		//std::string particleMessage = serializeParticles(particles);
+		Particle p = Particle(640, 360, 0, 100);
+		std::string particleMessage = p.toJSON().dump();
+		particleMessage.append("\0");
 
 		//for (auto& client : clients) {
 		boost::asio::write(client, boost::asio::buffer(particleMessage));

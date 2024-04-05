@@ -194,6 +194,8 @@ public:
 	}
 };
 
+
+
 std::vector<Particle> particles;
 
 class Sprite {
@@ -393,35 +395,35 @@ public:
 		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
 		//char buffer[bufferSize];
-		//std::array<char, bufferSize> buffer;
-		char buffer[1];
+		std::array<char, bufferSize> buffer;
+		//char buffer[1];
 		std::string message;
 
 		try {
 			boost::system::error_code error;
 
 			while (true) {
-				/*size_t length = socket.read_some(boost::asio::buffer(buffer), error);
+				size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 				if (error) {
 					throw boost::system::system_error(error);
 				}
 				else {
 					message = std::string(buffer.data(), length);
 					break;
-				}*/
-				size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
+				}
+				//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
 
-				if (error) {
-					throw boost::system::system_error(error);
-				}
+				//if (error) {
+				//	throw boost::system::system_error(error);
+				//}
 
-				// Append received character to the message
-				if (buffer[0] == '\0') {
-					break; // Null terminator encountered, end of message
-				}
-				else {
-					message.push_back(buffer[0]);
-				}
+				//// Append received character to the message
+				//if (buffer[0] == '\0') {
+				//	break; // Null terminator encountered, end of message
+				//}
+				//else {
+				//	message.push_back(buffer[0]);
+				//}
 			}
 
 		}
@@ -486,17 +488,15 @@ public:
 
 							std::cout << "Received msg: " << receivedMsg << std::endl;
 
-							// Testing single particle
-							//Particle receivedParticle = Particle::fromJSON(json::parse(receivedMsg));
+							std::vector<Particle> newParticles;
+							newParticles = deserializeParticleMessage(receivedMsg);
+							std::cout << "receivedParticleVector size: " << newParticles.size() << std::endl;
 
-							std::vector<Particle> receivedParticleVector = deserializeParticleMessage(receivedMsg);
-							std::cout << "receivedParticleVector size: " << receivedParticleVector.size() << std::endl;
 							//updateParticlesFromServer(receivedParticleVector);		
 							// Print particles received
-							for (const auto& particle : receivedParticleVector) {
+							for (const auto& particle : newParticles) {
 								std::cout << "Particle: (" << particle.x << ", " << particle.y << ", " << particle.angle << ", " << particle.velocity << ")" << std::endl;
 							}
-
 
 							/*
 							// Message for particle will contain "Particles\n" at the head
