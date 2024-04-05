@@ -447,7 +447,7 @@ public:
 			if (jsonString[i] != '|') {
 				message.push_back(jsonString[i]);
 			}
-			else {
+			else if (i != jsonString.length() - 1) {
 				message.clear();
 			}
 		}
@@ -519,7 +519,7 @@ public:
 							// Mutex lock the particles when accessing and modifying
 							std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
 							if (!checkParticlesConsistency(receivedParticles)) {
-								std::cout << getTimestamp() << ": Particles are inconsistent." << std::endl;
+								std::cout << getTimestamp() << ": Syncing particles..." << std::endl;
 
 								particles = receivedParticles;
 							}
