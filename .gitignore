@@ -5,3 +5,7 @@
 /glm
 /imgui
 /build
+
+.vs
+Debug
+x64/Debug/*
