@@ -437,39 +437,67 @@ public:
 	std::vector<Particle> deserializeParticleMessage(const std::string& jsonString) {
 
 		std::vector<Particle> particleVector;
-		json jsonParticles = json::parse(jsonString);
-		std::cout << "jsonParticles size: " << jsonParticles.size() << std::endl;
-		std::cout << "jsonParticles: " << jsonParticles << std::endl;
 
-		// Assuming the JSON object has arrays for "x", "y", "angle", and "velocity"
-		std::vector<json> xValues = jsonParticles["x"];
-		std::vector<json> yValues = jsonParticles["y"];
-		std::vector<json> angleValues = jsonParticles["angle"];
-		std::vector<json> velocityValues = jsonParticles["velocity"];
+		try {
+			json jsonParticles = json::parse(jsonString);
 
+			// Validate JSON structure
+			if (!jsonParticles.is_array() || jsonParticles.empty()) {
+				std::cerr << "Error: Invalid JSON structure." << std::endl;
+				return particleVector; // Return empty vector on error
+			}
 
-		// Ensure all arrays have the same size
-		if (xValues.size() == yValues.size() &&
-			xValues.size() == angleValues.size() &&
-			xValues.size() == velocityValues.size()) {
+			for (const auto& particleJson : jsonParticles) {
+				if (!particleJson.is_object() || !particleJson.contains("x") || !particleJson.contains("y") ||
+					!particleJson.contains("angle") || !particleJson.contains("velocity")) {
+					std::cerr << "Error: Invalid particle JSON object." << std::endl;
+					continue; // Skip this particle and continue with the next
+				}
 
+				float x = particleJson["x"].get<float>();
+				float y = particleJson["y"].get<float>();
+				float angle = particleJson["angle"].get<float>();
+				float velocity = particleJson["velocity"].get<float>();
 
-			for (size_t i = 0; i < xValues.size(); ++i) {
-				float x = xValues[i];
-				float y = yValues[i];
-				float angle = angleValues[i];
-				float velocity = velocityValues[i];
-
-				std::cout << "Particle #" << i << ": " << x << " " << y << " " << angle << " " << velocity << std::endl;
-
-				// Create a Particle object and add it to the vector
 				particleVector.emplace_back(x, y, angle, velocity);
 			}
 		}
-		else {
-			// Handle the case where the arrays are not the same size
-			std::cerr << "Error: JSON arrays are not the same size." << std::endl;
+		catch (const std::exception& e) {
+			std::cerr << "Error deserializing particle message: " << e.what() << std::endl;
 		}
+		//json jsonParticles = json::parse(jsonString);
+		//std::cout << "jsonParticles size: " << jsonParticles.size() << std::endl;
+		//std::cout << "jsonParticles: " << jsonParticles << std::endl;
+
+		//// Assuming the JSON object has arrays for "x", "y", "angle", and "velocity"
+		//std::vector<json> xValues = jsonParticles["x"];
+		//std::vector<json> yValues = jsonParticles["y"];
+		//std::vector<json> angleValues = jsonParticles["angle"];
+		//std::vector<json> velocityValues = jsonParticles["velocity"];
+
+
+		//// Ensure all arrays have the same size
+		//if (xValues.size() == yValues.size() &&
+		//	xValues.size() == angleValues.size() &&
+		//	xValues.size() == velocityValues.size()) {
+
+
+		//	for (size_t i = 0; i < xValues.size(); ++i) {
+		//		float x = xValues[i];
+		//		float y = yValues[i];
+		//		float angle = angleValues[i];
+		//		float velocity = velocityValues[i];
+
+		//		std::cout << "Particle #" << i << ": " << x << " " << y << " " << angle << " " << velocity << std::endl;
+
+		//		// Create a Particle object and add it to the vector
+		//		particleVector.emplace_back(x, y, angle, velocity);
+		//	}
+		//}
+		//else {
+		//	// Handle the case where the arrays are not the same size
+		//	std::cerr << "Error: JSON arrays are not the same size." << std::endl;
+		//}
 
 
 
