@@ -457,13 +457,6 @@ public:
 							// Data is available, proceed to read the message
 							std::string receivedMsg = receiveMessage(socket);
 
-							std::cout << "Received msg: " << receivedMsg << std::endl;
-								 
-							// Testing single particle
-							Particle receivedParticle = Particle::fromJSON(json::parse(receivedMsg));
-
-							std::cout << "Particle: " << receivedParticle.x << ", " << receivedParticle.y << ", " << receivedParticle.angle << ", " << receivedParticle.velocity << std::endl;
-							/*
 							// Message for particle will contain "Particles\n" at the head
 							if (receivedMsg.find("Particles\n") != std::string::npos) {
 								// Remove the "Particles\n" string from the message
@@ -484,7 +477,6 @@ public:
 							else {
 								std::cout << "No particle indicator found at start of message." << std::endl;
 							}
-							*/
 						}
 						else {
 							std::cerr << "Error waiting for data: " << error.message() << std::endl;
