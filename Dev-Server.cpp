@@ -394,32 +394,32 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 	}
 }
 
-//void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
-//	boost::asio::io_context io_context;
-//	boost::asio::steady_timer timer(io_context);
-//
-//	// Define function for periodic sending
-//	using PeriodicTask = std::function<void()>;
-//
-//	// Initialize the periodic task with a lambda that captures the timer and clients
-//	PeriodicTask periodicTask = [&]() {
-//		timer.expires_after(std::chrono::seconds(30));
-//		timer.async_wait([&](const boost::system::error_code& error) {
-//			if (!error) {
-//				// Send particles to clients
-//				sendParticles(std::ref(clients));
-//				// Reschedule the timer
-//				periodicTask();
-//			}
-//			});
-//		};
-//
-//	// Start periodic sending
-//	periodicTask();
-//
-//	// Run the io_context to start the timer
-//	io_context.run();
-//}
+void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
+	boost::asio::io_context io_context;
+	boost::asio::steady_timer timer(io_context);
+
+	// Define function for periodic sending
+	using PeriodicTask = std::function<void()>;
+
+	// Initialize the periodic task with a lambda that captures the timer and clients
+	PeriodicTask periodicTask = [&]() {
+		timer.expires_after(std::chrono::seconds(30));
+		timer.async_wait([&](const boost::system::error_code& error) {
+			if (!error) {
+				// Send particles to clients
+				sendParticles(std::ref(clients));
+				// Reschedule the timer
+				periodicTask();
+			}
+			});
+		};
+
+	// Start periodic sending
+	periodicTask();
+
+	// Run the io_context to start the timer
+	io_context.run();
+}
 
 //void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
 //	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
@@ -484,9 +484,7 @@ void runServer(std::vector<tcp::socket>& clients) {
 
 		io_context.run();
 
-		// Start the periodic sending in a separate thread
-		//std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
-		//periodicSendThread.detach();
+		
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
@@ -498,6 +496,10 @@ int main(int argc, char *argv) {
 	std::vector<tcp::socket> clients;
 
 	std::thread serverThread(runServer, std::ref(clients));
+
+	// Start the periodic sending in a separate thread
+	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
+	periodicSendThread.detach();
 
 
 	if (!glfwInit()) {
