@@ -18,10 +18,9 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 #include "stb_image.h"
-#include "json.hpp"
 
+using namespace std;
 using boost::asio::ip::tcp;
-using json = nlohmann::json;
 
 enum Mode {
 	DEVELOPER,
@@ -145,22 +144,6 @@ public:
 		x = std::max(0.0f, std::min(1280.0f, x));
 		y = std::max(0.0f, std::min(720.0f, y));
 	}
-
-	json toJSON() const {
-		json j;
-		j["x"] = x;
-		j["y"] = y;
-		j["angle"] = angle;
-		j["velocity"] = velocity;
-		return j;
-	}
-
-	static Particle fromJSON(const json& j) {
-		return MyClass(j["x"].get<float>(),
-			j["y"].get<float>(),
-			j["angle"].get<float>(),
-			j["velocity"].get<float>());
-	}
 };
 
 std::vector<Particle> particles;
@@ -186,20 +169,6 @@ public:
 		y = std::max(0.0f, std::min(720.0f, y));
 
 		//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl; // for debugging
-	}
-
-	json toJSON() const {
-		json j;
-		j["x"] = x;
-		j["y"] = y;
-		j["speed"] = speed;
-		return j;
-	}
-
-	static Sprite fromJSON(const json& j) {
-		return MyClass(j["x"].get<float>(),
-			j["y"].get<float>(),
-			j["speed"].get<float>());
 	}
 };
 
@@ -342,7 +311,7 @@ public:
 		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
 	}
-	// Not using this for now
+
 	std::vector<Particle> receiveParticles() {
 		std::vector<Particle> receivedParticles;
 		constexpr size_t bufferSize = 1024;
@@ -371,22 +340,20 @@ public:
 		return receivedParticles;
 	}
 
-	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
-		// Will have to change buffer size to accommodate message length (from JSON)
+	std::string receiveMessage() {
 		constexpr size_t bufferSize = 1024;
-		//char buffer[bufferSize];
-		std::array<char, bufferSize> buffer;
+		char buffer[bufferSize];
 		std::string message;
 
 		try {
 			boost::system::error_code error;
-			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
+			size_t length = socket.read_some(boost::asio::buffer(buffer, bufferSize), error);
 
 			if (error) {
 				throw boost::system::system_error(error);
 			}
 			else {
-				message = std::string(buffer.data(), length);
+				message = std::string(buffer, length);
 			}
 		}
 		catch (const std::exception& e) {
@@ -395,49 +362,6 @@ public:
 
 		return message;
 	}
-
-	std::vector<Particle> deserializeParticleMessage(const std::string& jsonString) {
-
-		std::vector<Particle> receivedParticles;
-
-		json j = json::parse(jsonString);
-		for (const auto& particleJson : j) {
-			receivedParticles.push_back(Particle::fromJSON(particleJson));
-		}
-
-		return receivedParticles;
-	}
-
-	void receiveParticlesAsync(boost::asio::ip::tcp::socket& socket) {
-		// gonna need locks when either this or receiveSpritesAsync are receiving from server
-		while (true) {
-			std::string receivedParticlesMsg = receiveMessage(socket);
-			std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedParticlesMsg);
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		}
-	}
-
-	std::vector<Sprite> deserializeSpriteMessage(const std::string& jsonString) {
-
-		std::vector<Particle> receivedSprites;
-
-		json j = json::parse(jsonString);
-		for (const auto& particleJson : j) {
-			receivedSprites.push_back(Sprite::fromJSON(particleJson));
-		}
-
-		return receivedSprites;
-	}
-
-	void receiveSpritesAsync(boost::asio::ip::tcp::socket& socket) {
-		while (true) {
-			std::string receivedSpritesMsg = receiveMessage(socket);
-			std::vector<Sprite> receivedSprites = deserializeSpriteMessage(receivedSpritesMsg);
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		}
-	}
-
-
 
 private:
 	boost::asio::io_context ioContext;
@@ -453,14 +377,6 @@ int main(int argc, char* argv) {
 		std::cout << "Received message from server: " << serverMessage << std::endl;
 		// Process the message
 	}
-
-	// Launch separate thread for receiving particles
-	std::thread listenforParticlesThread(receiveParticlesAsync, std::ref(networkClient::socket));
-	listenforParticlesThread.detach();
-
-	// Launch separate thread for receiving sprites
-	std::thread listenforSpritesThread(receiveSpritesAsync, std::ref(networkClient::socket));
-	listenforSpritesThread.detach();
 
 	zoomFactor = std::min(scaleFactorWidth, scaleFactorHeight);
 
