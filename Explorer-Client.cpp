@@ -50,7 +50,7 @@ float scaleFactorWidth = 1280.0f / 19.0f;
 float scaleFactorHeight = 720.0f / 33.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
-/*
+
 std::string getCurrentDate() {
 	auto now = std::chrono::system_clock::now();
 
@@ -76,7 +76,7 @@ std::string getCurrentTime() {
 
 	return std::string(buffer);
 }
-*/
+
 static bool LoadTexture(const char* path, GLuint& textureID) {
 	glGenTextures(1, &textureID);
 
@@ -363,13 +363,6 @@ static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vec
 	}
 }
 
-void updateParticlesFromServer(std::vector<Particle>& receivedParticles) {
-	for (int i = 0; i < receivedParticles.size(); i++) {
-		particles[i] = receivedParticles[i];
-	}
-}
-
-
 class NetworkClient {
 public:
 	boost::asio::io_context ioContext;
@@ -388,6 +381,34 @@ public:
 		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
 	}
+	// Not using this for now
+	std::vector<Particle> receiveParticles() {
+		std::vector<Particle> receivedParticles;
+		constexpr size_t bufferSize = 1024;
+		char buffer[bufferSize];
+
+		try {
+			boost::system::error_code error;
+			size_t length = socket.read_some(boost::asio::buffer(buffer, bufferSize), error);
+
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				std::istringstream iss(std::string(buffer, length));
+				float x, y, angle, velocity;
+				while (iss >> x >> y >> angle >> velocity) {
+					receivedParticles.emplace_back(x, y, angle, velocity);
+				}
+			}
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error receiving particles: " << e.what() << std::endl;
+		}
+
+		std::cout << "Received " << receivedParticles.size() << " particles." << std::endl;
+		return receivedParticles;
+	}
 
 	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
 		// Will have to change buffer size to accommodate message length (from JSON)
@@ -398,25 +419,14 @@ public:
 
 		try {
 			boost::system::error_code error;
+			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 
-
-			while (true) {
-				size_t length = socket.read_some(boost::asio::buffer(buffer), error);
-				if (error) {
-					throw boost::system::system_error(error);
-				}
-				// else {
-				// 	message = std::string(buffer.data(), length);
-				// }
-
-				if (buffer[0] == '\0') {
-					break; // Null terminator encountered, end of message
-				}
-				else {
-					message.push_back(buffer[0]);
-				}
+			if (error) {
+				throw boost::system::system_error(error);
 			}
-
+			else {
+				message = std::string(buffer.data(), length);
+			}
 		}
 		catch (const std::exception& e) {
 			std::cerr << "Error receiving message: " << e.what() << std::endl;
@@ -427,44 +437,14 @@ public:
 
 	std::vector<Particle> deserializeParticleMessage(const std::string& jsonString) {
 
-		std::vector<Particle> particleVector;
-		json jsonParticles = json::parse(jsonString);
-		std::cout << "jsonParticles size: " << jsonParticles.size() << std::endl;
-		std::cout << "jsonParticles: " << jsonParticles << std::endl;
+		std::vector<Particle> receivedParticles;
 
-		// Assuming the JSON object has arrays for "x", "y", "angle", and "velocity"
-		std::vector<json> xValues = jsonParticles["x"];
-		std::vector<json> yValues = jsonParticles["y"];
-		std::vector<json> angleValues = jsonParticles["angle"];
-		std::vector<json> velocityValues = jsonParticles["velocity"];
-
-
-		// Ensure all arrays have the same size
-		if (xValues.size() == yValues.size() &&
-			xValues.size() == angleValues.size() &&
-			xValues.size() == velocityValues.size()) {
-
-
-			for (size_t i = 0; i < xValues.size(); ++i) {
-				float x = xValues[i];
-				float y = yValues[i];
-				float angle = angleValues[i];
-				float velocity = velocityValues[i];
-
-				std::cout << "Particle #" << i << ": " << x << " " << y << " " << angle << " " << velocity << std::endl;
-
-				// Create a Particle object and add it to the vector
-				particleVector.emplace_back(x, y, angle, velocity);
-			}
-		}
-		else {
-			// Handle the case where the arrays are not the same size
-			std::cerr << "Error: JSON arrays are not the same size." << std::endl;
+		json j = json::parse(jsonString);
+		for (const auto& particleJson : j) {
+			receivedParticles.push_back(Particle::fromJSON(particleJson));
 		}
 
-
-
-		return particleVector;
+		return receivedParticles;
 	}
 
 	void startAsyncReceive() {
@@ -478,19 +458,11 @@ public:
 							std::string receivedMsg = receiveMessage(socket);
 
 							std::cout << "Received msg: " << receivedMsg << std::endl;
-
+								 
 							// Testing single particle
-							//Particle receivedParticle = Particle::fromJSON(json::parse(receivedMsg));
+							Particle receivedParticle = Particle::fromJSON(json::parse(receivedMsg));
 
-							std::vector<Particle> receivedParticleVector = deserializeParticleMessage(receivedMsg);
-							std::cout << "receivedParticleVector size: " << receivedParticleVector.size() << std::endl;
-							//updateParticlesFromServer(receivedParticleVector);		
-							// Print particles received
-							for (const auto& particle : receivedParticleVector) {
-								std::cout << "Particle: (" << particle.x << ", " << particle.y << ", " << particle.angle << ", " << particle.velocity << ")" << std::endl;
-							}
-
-
+							std::cout << "Particle: " << receivedParticle.x << ", " << receivedParticle.y << ", " << receivedParticle.angle << ", " << receivedParticle.velocity << std::endl;
 							/*
 							// Message for particle will contain "Particles\n" at the head
 							if (receivedMsg.find("Particles\n") != std::string::npos) {
@@ -570,11 +542,6 @@ int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
 
 	networkClient.startAsyncReceive();
-
-	// Print out all the particles
-	for (const auto& particle : particles) {
-		std::cout << "Particle: (" << particle.x << ", " << particle.y << ", " << particle.angle << ", " << particle.velocity << ")" << std::endl;
-	}
 
 	/*
 	std::string serverMessage = networkClient.receiveMessage();

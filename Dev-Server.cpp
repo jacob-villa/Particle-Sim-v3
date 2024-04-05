@@ -208,14 +208,7 @@ static void SpawnRandomParticle() {
 	y = disY(gen);
 	float angle = disAngle(gen);
 	float velocity = disVelocity(gen);
-	// json j;
-	// j["x"] = x;
-	// j["y"] = y;
-	// j["angle"] = angle;
-	// j["velocity"]= velocity;
 
-	// std::string serializedParticles = j.dump();
-	// sendParticlestoClient(j);
 	particles.emplace_back(x, y, angle, velocity);
 }
 
@@ -335,91 +328,69 @@ json particleToJSON(Particle particle) {
 	return j;
 }
 
-// Returns the message to be sent to the clients
-std::string serializeParticles(const std::vector<Particle>& particles) {
-	std::vector<int> xValues;
-	std::vector<int> yValues;
-	std::vector<int> angleValues;
-	std::vector<int> velocityValues;
+std::vector<json> serializeParticles(const std::vector<Particle>& particles) {
+	/*
+	std::stringstream ss;
+	for (const auto& particle : particles) {
+		ss << particle.x << "," << particle.y << "," << particle.angle << "," << particle.velocity << "|";
+	}
+	return ss.str();
+
+
+	// Convert object attributes to JSON
+	std::vector<json> particlesJSON;
 
 	for (const auto& particle : particles) {
-		xValues.push_back(particle.x);
-		yValues.push_back(particle.y);
-		angleValues.push_back(particle.angle);
-		velocityValues.push_back(particle.velocity);
+		json j = particleToJSON(particle);
+		particlesJSON.push_back(j);
+	}
+	*/
+	json particlesJSON;
+
+	for (const auto& particle : particles) {
+		particlesJSON.push_back(particle.toJSON());
 	}
 
-	json j;
-	j["x"] = xValues;
-	j["y"] = yValues;
-	j["angle"] = angleValues;
-	j["velocity"] = velocityValues;
-
-	std::string serializedParticles = j.dump();
-
-	// Inserting identifier
-	//serializedParticles.insert(0, "Particles\n");
-
-	return serializedParticles;
+	return particlesJSON;
 }
 
-void sendParticles(tcp::socket client) {
+void sendParticles(const std::vector<Particle>& particles, std::vector<tcp::socket> clients) {
 	try {
-		std::string particleMessage = serializeParticles(particles);
+		// Convert all particles in server into JSON
+		// Send JSON to all clients
 
-		//for (auto& client : clients) {
-			boost::asio::write(client, boost::asio::buffer(particleMessage));
-		//}
+		// Approach 1: Send 1 single JSON where each field is an array of values
+		std::vector<int> xValues;
+		std::vector<int> yValues;
+		std::vector<int> angleValues;
+		std::vector<int> velocityValues;
+
+		for (const auto& particle : particles) {
+			xValues.push_back(particle.x);
+			yValues.push_back(particle.y);
+			angleValues.push_back(particle.angle);
+			velocityValues.push_back(particle.velocity);
+		}
+
+		json j;
+		j["x"] = xValues;
+		j["y"] = yValues;
+		j["angle"] = angleValues;
+		j["velocity"] = velocityValues;
+
+		std::string serializedParticles = j.dump();
+		serializedParticles.insert(0, "Particles\n");
+
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(serializedParticles));
+		}
+
+		// Approach 2: Send 1 JSON per particle
 
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
 	}
-}
-
-//void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
-//	boost::asio::io_context io_context;
-//	boost::asio::steady_timer timer(io_context);
-//
-//	// Define function for periodic sending
-//	using PeriodicTask = std::function<void()>;
-//
-//	// Initialize the periodic task with a lambda that captures the timer and clients
-//	PeriodicTask periodicTask = [&]() {
-//		timer.expires_after(std::chrono::seconds(30));
-//		timer.async_wait([&](const boost::system::error_code& error) {
-//			if (!error) {
-//				// Send particles to clients
-//				sendParticles(clients);
-//				// Reschedule the timer
-//				periodicTask();
-//			}
-//			});
-//		};
-//
-//	// Start periodic sending
-//	periodicTask();
-//
-//	// Run the io_context to start the timer
-//	io_context.run();
-//}
-
-void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
-	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
-		if (!error) {
-			std::cout << "New client connected." << std::endl;
-			clients.push_back(std::move(socket));
-			
-			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
-			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
-
-			// Continue accepting new clients
-			acceptClients(io_context, acceptor, clients);
-		}
-		else {
-			std::cerr << "Error accepting client: " << error.message() << std::endl;
-		}
-	});
 }
 
 void runServer() {
@@ -437,12 +408,39 @@ void runServer() {
 			clients.push_back(std::move(socket));
 
 			std::cout << "New client connected." << std::endl;
-
+			/*
 			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
 			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
+			*/
+			std::vector<int> xValues;
+			std::vector<int> yValues;
+			std::vector<int> angleValues;
+			std::vector<int> velocityValues;
+
+			Particle p = Particle(640, 720, 0, 100);
 			
-			std::string particleMessage = serializeParticles(particles);
-			boost::asio::write(clients.back(), boost::asio::buffer(particleMessage));
+			std::vector<Particle> particleTestVector;
+			particleTestVector.push_back(p);
+			particleTestVector.push_back(Particle(600, 700, 90, 100));
+			particleTestVector.push_back(Particle(680, 720, 180, 100));
+			particleTestVector.push_back(Particle(640, 720, 270, 100));
+
+			for (const auto& particle : particleTestVector) {
+				xValues.push_back(particle.x);
+				yValues.push_back(particle.y);
+				angleValues.push_back(particle.angle);
+				velocityValues.push_back(particle.velocity);
+			}
+
+			json j;
+			j["x"] = xValues;
+			j["y"] = yValues;
+			j["angle"] = angleValues;
+			j["velocity"] = velocityValues;
+
+			std::string serializedParticles = j.dump();
+
+			boost::asio::write(clients.back(), boost::asio::buffer(serializedParticles));
 		}
 	}
 	catch (std::exception& e) {
@@ -450,31 +448,108 @@ void runServer() {
 	}
 }
 
-//void runServer() {
-//	try {
-//		boost::asio::io_context io_context;
-//		boost::asio::ip::tcp::acceptor acceptor(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
-//
-//		std::cout << "Server started on port " << port << std::endl;
-//
-//		std::vector<boost::asio::ip::tcp::socket> clients;
-//
-//		// Start accepting clients in a separate thread
-//		std::thread acceptClientsThread([&]() {
-//			acceptClients(io_context, acceptor, clients);
-//			io_context.run();
-//		});
-//		acceptClientsThread.detach();
-//
-//		// Start the periodic sending in a separate thread
-//		std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
-//		periodicSendThread.detach();
-//	}
-//	catch (std::exception& e) {
-//		std::cerr << "Exception in server: " << e.what() << "\n";
-//	}
-//}
+/*
+----------------
 
+void sendParticles(std::vector<boost::asio::ip::tcp::socket>& clients) {
+	try {
+		// Convert all particles in server into JSON
+		// Send JSON to all clients
+		std::vector<json> serializedParticlesJSON = serializeParticles(particles);
+		//std::string serializedParticles = boost::json::serialize(serializedParticlesJSON);
+		std::string serializedParticles = json(serializedParticlesJSON).dump();
+
+
+		serializedParticles.insert(0, "Particles\n");
+
+		for (boost::asio::ip::tcp::socket& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(serializedParticles));
+		}
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
+	}
+}
+
+void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
+	boost::asio::io_context io_context;
+	boost::asio::steady_timer timer(io_context);
+
+	// Define the function type for the periodic task
+	using PeriodicTask = std::function<void()>;
+
+	// Initialize the periodic task with a lambda that captures the timer and clients
+	PeriodicTask periodicTask = [&]() {
+		timer.expires_after(std::chrono::seconds(30));
+		timer.async_wait([&](const boost::system::error_code& error) {
+			if (!error) {
+				// Assuming particles is a global or accessible variable containing the current state of particles
+				sendParticles(particles, clients);
+				// Reschedule the timer
+				periodicTask();
+			}
+			});
+		};
+
+	// Start the periodic sending of particle data
+	periodicTask();
+
+	// Run the io_context to start the timer
+	io_context.run();
+}
+*/
+void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
+	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
+		if (!error) {
+			std::cout << "New client connected." << std::endl;
+			//clients.push_back(std::move(socket));
+			
+			//std::string welcomeMessage = "Welcome to the particle simulator server!\n";
+			//boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
+
+			// Testing sending a single particle
+			Particle p = Particle(640, 720, 0, 100);
+			json particleJSON = p.toJSON();
+			std::string particleString = particleJSON.dump();
+			boost::asio::write(socket, boost::asio::buffer(particleString));
+
+			// Continue accepting new clients
+			//acceptClients(io_context, acceptor, clients);
+		}
+		else {
+			std::cerr << "Error accepting client: " << error.message() << std::endl;
+		}
+	});
+}
+/*
+void runServer() {
+	try {
+		boost::asio::io_context io_context;
+		boost::asio::ip::tcp::acceptor acceptor(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+
+		std::cout << "Server started on port " << port << std::endl;
+
+		std::vector<boost::asio::ip::tcp::socket> clients;
+
+		// Start accepting clients in a separate thread
+		std::thread acceptClientsThread([&]() {
+			acceptClients(io_context, acceptor, clients);
+			io_context.run();
+		});
+		acceptClientsThread.detach();
+
+		// Start the periodic sending in a separate thread
+		/*
+		std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
+		periodicSendThread.detach();
+		
+
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
+	}
+}
+*/
 int main(int argc, char *argv) {
 	std::thread serverThread(runServer);
 
@@ -625,16 +700,7 @@ int main(int argc, char *argv) {
 
 				if (newParticleX >= 0 && newParticleX <= 1280 &&
 					newParticleY >= 0 && newParticleY <= 720 &&
-					newParticleAngle >= 0.0 && newParticleAngle <= 360.0) 
-				{
-					// json j;
-					// j["x"] = newParticleX;
-					// j["y"] = newParticleY;
-					// j["angle"] = newParticleAngle;
-					// j["velocity"]= newParticleVelocity;
-
-					// std::string serializedParticles = j.dump();
-					// sendParticlestoClient(j);
+					newParticleAngle >= 0.0 && newParticleAngle <= 360.0) {
 					particles.emplace_back(newParticleX, newParticleY, newParticleAngle, newParticleVelocity);
 				}
 				else {
@@ -692,9 +758,6 @@ int main(int argc, char *argv) {
 		ImGui::Dummy(ImVec2(0, 10));
 		if (currentMode == DEVELOPER) {
 			if (ImGui::Button("Add Batch Particles")) {
-				/*
-				std::vector<Particle> particlesSent;
-				*/
 				float dX = (endX - startX) / (numParticles - 1);
 				float dY = (endY - startY) / (numParticles - 1);
 				float dAngle = (endAngle - startAngle) / (numParticles - 1);
@@ -708,26 +771,10 @@ int main(int argc, char *argv) {
 
 					switch (particleVariationType) {
 					case 0: // Varying X and Y
-						// json j;
-						// j["x"] = x;
-						// j["y"] = y;
-						// j["angle"] = startAngle;
-						// j["velocity"]= startVelocity;
-
-						// std::string serializedParticles = j.dump();
-						// sendParticlestoClient(j);
 						particles.emplace_back(x, y, startAngle, startVelocity);
 						break;
 					case 1: // Varying Angle
 						angle = fmod(angle, 360.0f);
-												// json j;
-						// j["x"] = startX;
-						// j["y"] = startY;
-						// j["angle"] = angle;
-						// j["velocity"]= startVelocity;
-
-						// std::string serializedParticles = j.dump();
-						// sendParticlestoClient(j);
 						particles.emplace_back(startX, startY, angle, startVelocity);
 						break;
 					case 2: // Varying Velocity
