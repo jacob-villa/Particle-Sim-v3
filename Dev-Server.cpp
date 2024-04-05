@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <iostream>
@@ -379,7 +380,7 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	return serializedParticles;
 }
 
-void sendParticles(std::vector<tcp::socket> clients) {
+void sendParticles(std::vector<tcp::socket>& clients) {
 	try {
 		std::string particleMessage = serializeParticles(particles);
 
@@ -439,7 +440,7 @@ void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::ac
 }
 
 
-void runServer(std::vector<tcp::socket> clients) {
+void runServer(std::vector<tcp::socket>& clients) {
 	try {
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
@@ -460,7 +461,7 @@ void runServer(std::vector<tcp::socket> clients) {
 			*/
 			/*std::string particleMessage = serializeParticles(particles);
 			boost::asio::write(clients.back(), boost::asio::buffer(particleMessage));*/
-			sendParticles(clients);
+			sendParticles(std::ref(clients));
 		}
 	}
 	catch (std::exception& e) {
@@ -497,7 +498,7 @@ int main(int argc, char *argv) {
 
 	std::vector<tcp::socket> clients;
 
-	std::thread serverThread(runServer, clients);
+	std::thread serverThread(runServer, std::ref(clients));
 
 
 	if (!glfwInit()) {
