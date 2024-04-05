@@ -360,6 +360,10 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	// Inserting identifier
 	//serializedParticles.insert(0, "Particles\n");
 
+	// Insert \0 at end of message
+	serializedParticles.push_back('\0');
+
+
 	return serializedParticles;
 }
 
@@ -368,7 +372,7 @@ void sendParticles(tcp::socket client) {
 		std::string particleMessage = serializeParticles(particles);
 
 		//for (auto& client : clients) {
-			boost::asio::write(client, boost::asio::buffer(particleMessage));
+		boost::asio::write(client, boost::asio::buffer(particleMessage));
 		//}
 
 	}

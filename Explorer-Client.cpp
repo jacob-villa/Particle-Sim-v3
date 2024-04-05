@@ -393,22 +393,29 @@ public:
 		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
 		//char buffer[bufferSize];
-		std::array<char, bufferSize> buffer;
+		//std::array<char, bufferSize> buffer;
+		char buffer[1];
 		std::string message;
 
 		try {
 			boost::system::error_code error;
 
-
 			while (true) {
-				size_t length = socket.read_some(boost::asio::buffer(buffer), error);
+				/*size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 				if (error) {
 					throw boost::system::system_error(error);
 				}
-				// else {
-				// 	message = std::string(buffer.data(), length);
-				// }
+				else {
+					message = std::string(buffer.data(), length);
+					break;
+				}*/
+				size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
 
+				if (error) {
+					throw boost::system::system_error(error);
+				}
+
+				// Append received character to the message
 				if (buffer[0] == '\0') {
 					break; // Null terminator encountered, end of message
 				}
