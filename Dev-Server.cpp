@@ -407,7 +407,7 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 //		timer.async_wait([&](const boost::system::error_code& error) {
 //			if (!error) {
 //				// Send particles to clients
-//				sendParticles(clients);
+//				sendParticles(std::ref(clients));
 //				// Reschedule the timer
 //				periodicTask();
 //			}
@@ -423,20 +423,23 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 
 void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::acceptor& acceptor, std::vector<boost::asio::ip::tcp::socket>& clients) {
 	acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
-		if (!error) {
-			std::cout << "New client connected." << std::endl;
-			clients.push_back(std::move(socket));
-			
-			/*std::string welcomeMessage = "Welcome to the particle simulator server!\n";
-			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));*/
+		try {
+			if (!error) {
+				std::cout << "New client connected." << std::endl;
+				clients.push_back(std::move(socket));
 
-			// Continue accepting new clients
-			acceptClients(io_context, acceptor, clients);
+				//sendParticles(clients);
+				
+				// Continue accepting new clients
+				acceptClients(io_context, acceptor, std::ref(clients));
+			}
 		}
-		else {
-			std::cerr << "Error accepting client: " << error.message() << std::endl;
+		catch (std::exception& e) {
+			std::cerr << "Exception in server: " << e.what() << "\n";
 		}
-	});
+	}
+		
+	);
 }
 
 
@@ -447,52 +450,22 @@ void runServer(std::vector<tcp::socket>& clients) {
 
 		std::cout << "Server started on port " << port << std::endl;
 
-		while (true) {
-			tcp::socket socket(io_context);
-			acceptor.accept(socket);
-			clients.push_back(std::move(socket));
+		// Start accepting clients in a separate thread
+		std::thread acceptClientsThread([&]() {
+			acceptClients(io_context, acceptor, std::ref(clients));
+			// This starts the async process
+			io_context.run();
+		});
+		acceptClientsThread.detach();
 
-			std::cout << "New client connected." << std::endl;
-
-			/*
-			* this was causing the error, it would send the welcome msg AND the particles, so it would try to read this welcome msg as a json
-			std::string welcomeMessage = "Welcome to the particle simulator server!\n";
-			boost::asio::write(clients.back(), boost::asio::buffer(welcomeMessage));
-			*/
-			/*std::string particleMessage = serializeParticles(particles);
-			boost::asio::write(clients.back(), boost::asio::buffer(particleMessage));*/
-			sendParticles(std::ref(clients));
-		}
+		// Start the periodic sending in a separate thread
+		//std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
+		//periodicSendThread.detach();
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
 	}
 }
-
-//void runServer() {
-//	try {
-//		boost::asio::io_context io_context;
-//		boost::asio::ip::tcp::acceptor acceptor(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
-//
-//		std::cout << "Server started on port " << port << std::endl;
-//
-//		std::vector<boost::asio::ip::tcp::socket> clients;
-//
-//		// Start accepting clients in a separate thread
-//		std::thread acceptClientsThread([&]() {
-//			acceptClients(io_context, acceptor, clients);
-//			io_context.run();
-//		});
-//		acceptClientsThread.detach();
-//
-//		// Start the periodic sending in a separate thread
-//		std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
-//		periodicSendThread.detach();
-//	}
-//	catch (std::exception& e) {
-//		std::cerr << "Exception in server: " << e.what() << "\n";
-//	}
-//}
 
 int main(int argc, char *argv) {
 
