@@ -29,6 +29,8 @@ enum Mode {
 	EXPLORER
 };
 
+static std::string STR_END = "_END";
+
 static GLFWwindow* window = nullptr;
 float PI = 3.14159265359;
 
@@ -407,8 +409,11 @@ public:
 					throw boost::system::system_error(error);
 				}
 				else {
-					message = std::string(buffer.data(), length);
-					break;
+					std::string temp = std::string(buffer.data(), length);
+					if (length >= 4 && temp.substr(length - 4) == STR_END) {
+						message = temp.substr(0, length - 4);
+						break;
+					}
 				}
 				// The \0 appended approach to string reading:
 				//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
