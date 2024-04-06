@@ -8,7 +8,7 @@ public class Sprite {
         this.speed = speed;
     }
 
-    void Move(float dx, float dy) {
+    void move(float dx, float dy) {
         x += dx;
         y -= dy;
 
