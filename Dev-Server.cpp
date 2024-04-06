@@ -682,6 +682,7 @@ int main(int argc, char *argv) {
 					// std::string serializedParticles = j.dump();
 					// sendParticlestoClient(j);
 					particles.emplace_back(newParticleX, newParticleY, newParticleAngle, newParticleVelocity);
+					sendParticles(std::ref(clients));
 				}
 				else {
 					showErrorPopup = true;
