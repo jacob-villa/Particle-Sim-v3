@@ -439,6 +439,68 @@ void acceptClients(boost::asio::io_context& io_context, boost::asio::ip::tcp::ac
 	});
 }
 
+<<<<<<< Updated upstream
+=======
+void handleClient(boost::asio::ip::tcp::socket& socket) {
+	constexpr size_t bufferSize = 1024;
+	std::array<char, bufferSize> buffer;
+
+	std::string message;
+
+	try {
+		boost::system::error_code error;
+
+		while (true) {
+			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				message = std::string(buffer.data(), length);
+				std::cout << message << std::endl;
+				std::istringstream iss(message);
+				float firstFloat, secondFloat;
+				// Attempt to extract the first float
+				if (iss >> firstFloat) {
+					// If the first extraction is successful, attempt to extract the second float
+					if (iss >> secondFloat) {
+
+					}
+					else {
+						std::cout << "Error: Could not extract the second float." << std::endl;
+					}
+				}
+				else {
+					std::cout << "Error: Could not extract the first float." << std::endl;
+				}
+				clientSprites[0].x = firstFloat;
+				clientSprites[0].y = 720.0-secondFloat;
+				std::cout << clientSprites[0].x << firstFloat << std::endl;
+				std::cout << clientSprites[0].y << secondFloat << std::endl;
+			}
+			// The \0 appended approach to string reading:
+			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
+
+			//if (error) {
+			//	throw boost::system::system_error(error);
+			//}
+
+			//// Append received character to the message
+			//if (buffer[0] == '\0') {
+			//	break; // Null terminator encountered, end of message
+			//}
+			//else {
+			//	message.push_back(buffer[0]);
+			//}
+		}
+
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error receiving message: " << e.what() << std::endl;
+	}
+
+}
+>>>>>>> Stashed changes
 
 void runServer(std::vector<tcp::socket>& clients) {
 	try {

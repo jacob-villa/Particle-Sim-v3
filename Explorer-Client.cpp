@@ -386,7 +386,7 @@ public:
 	}
 
 	void sendPosition(float x, float y) {
-		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
+		std::string message = std::to_string(x) + " " + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
 	}
 
@@ -894,11 +894,15 @@ int main(int argc, char* argv) {
 			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 
-			//networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
 
+<<<<<<< Updated upstream
 			// This portion breaks the UI a lot idk why
 			//std::vector<Particle> receivedParticles = networkClient.receiveParticles();
 			//particles = receivedParticles;
+=======
+			//networkClient.sendSpriteData(*explorerSprite);
+>>>>>>> Stashed changes
 		}
 
 		ImGui::PopStyleColor(4);
