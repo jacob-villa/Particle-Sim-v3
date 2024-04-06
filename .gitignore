@@ -9,3 +9,4 @@
 .vs
 Debug
 x64/Debug/*
+*.class
