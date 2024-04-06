@@ -214,6 +214,7 @@ public:
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
+		//dk where texture ID goes, but i assume here too in case
 		return j;
 	}
 
@@ -390,6 +391,15 @@ public:
 	void sendPosition(float x, float y) {
 		std::string message = std::to_string(x) + "," + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
+	}
+
+	void sendSpriteData(const Sprite& sprite) {
+		// Serialize sprite to JSON
+		json spriteData = sprite.toJSON();
+		std::string serializedData = spriteData.dump();
+
+		// Send the serialized data to the server
+		boost::asio::write(socket, boost::asio::buffer(serializedData));
 	}
 
 	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
@@ -915,9 +925,7 @@ int main(int argc, char* argv) {
 
 			//networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
 
-			// This portion breaks the UI a lot idk why
-			//std::vector<Particle> receivedParticles = networkClient.receiveParticles();
-			//particles = receivedParticles;
+			networkClient.sendSpriteData(*explorerSprite);
 		}
 
 		ImGui::PopStyleColor(4);

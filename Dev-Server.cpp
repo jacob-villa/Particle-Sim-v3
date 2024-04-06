@@ -345,7 +345,7 @@ static void DrawElements() {
 
 		// Check if the sprite is within the visible area
 		if (spritePos.x >= 0 && spritePos.x <= 1280 && spritePos.y >= 0 && spritePos.y <= 720) {
-			std::cout << "Passed the condition" << std::endl;
+			//std::cout << "Passed the condition" << std::endl;
 			// Draw the sprite
 			//if (isSpriteImageAvailable) {
 			//	// Draw the sprite using its texture
@@ -455,7 +455,38 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 	socket.async_read_some(boost::asio::buffer(buffer),
 		[&socket, &buffer](boost::system::error_code ec, std::size_t bytes_transferred) {
 			if (!ec) {
-				std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+				std::string receivedMessage(buffer.data(), bytes_transferred);
+				std::cout << "Received message from client: " << receivedMessage << std::endl;
+				//std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+
+				try {
+					//json j = json::parse(receivedMessage);
+
+					////check message if containing sprite data
+					//if (j.contains("x") && j.contains("y") && j.contains("speed")) {
+					//	// Sprite data
+					//	float x = j["x"].get<float>();
+					//	float y = j["y"].get<float>();
+					//	float speed = j["speed"].get<float>();
+
+					//	//find corresponding sprite and update pos and speed
+					//	for (auto& sprite : clientSprites) {
+					//		if (sprite.x == x && sprite.y == y) {
+					//			sprite.speed = speed;
+					//			sprite.Move(0, 0);
+					//			break;
+					//		}
+					//	}
+
+					//	// update the sprite
+					//	//explorerSprite->setPos(x, y);
+					//	//explorerSprite->speed = speed;
+					//	//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl;
+					//}
+				}
+				catch (json::parse_error& e) {
+					std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+				}
 
 				// Continue reading from the client
 				handleClient(socket);
