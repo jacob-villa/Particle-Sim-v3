@@ -330,10 +330,10 @@ static void DrawElements() {
 	for (const auto& sprite : clientSprites) {
 		ImVec2 spritePos = ImVec2(sprite.x, sprite.y);
 		// Commented out the adjustments for focus point and zoom factor
-		// spritePos.x = (spritePos.x - focusPoint.x) * zoomFactor + focusPoint.x;
-		// spritePos.y = (spritePos.y - focusPoint.y) * zoomFactor + focusPoint.y;
+		spritePos.x = (spritePos.x - focusPoint.x) * zoomFactor + focusPoint.x;
+		spritePos.y = (spritePos.y - focusPoint.y) * zoomFactor + focusPoint.y;
 		// Flip Y coordinate because ImGui's coordinate system starts from the top
-		// spritePos.y = 720 - spritePos.y;
+		spritePos.y = 720 - spritePos.y;
 
 		// Adjust sprite position for the border and offset
 		spritePos.x += 50;
@@ -344,7 +344,7 @@ static void DrawElements() {
 		float scaledSpriteHeight = spriteHeight * zoomFactor; // This line might need adjustment if zoomFactor is not 1
 
 		// Check if the sprite is within the visible area
-		if (spritePos.x >= 0 && spritePos.x <= 1280 && spritePos.y >= 0 && spritePos.y <= 720) {
+		if (spritePos.x >= 0 && spritePos.x <= 1380 && spritePos.y >= 0 && spritePos.y <= 830) {
 			//std::cout << "Passed the condition" << std::endl;
 			// Draw the sprite
 			//if (isSpriteImageAvailable) {
@@ -357,7 +357,7 @@ static void DrawElements() {
 			//}
 			//else {
 				// Draw a placeholder circle if the sprite image is not available
-				draw_list->AddCircleFilled(spritePos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+			draw_list->AddCircleFilled(spritePos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 			/*}*/
 		}
 	}
@@ -469,7 +469,7 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 				message = std::string(buffer.data(), length);
 				std::cout << message << std::endl;
 				std::istringstream iss(message);
-				float firstFloat, secondFloat;
+				float firstFloat, secondFloat = 0.0f;
 
 				// Attempt to extract the first float
 				if (iss >> firstFloat) {
@@ -486,7 +486,7 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 					std::cout << "Error: Could not extract the first float." << std::endl;
 				}
 				clientSprites[0].x = firstFloat;
-				clientSprites[0].y = 720-secondFloat;
+				clientSprites[0].y = secondFloat;
 			}
 			// The \0 appended approach to string reading:
 			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
