@@ -330,10 +330,10 @@ static void DrawElements() {
 	for (const auto& sprite : clientSprites) {
 		ImVec2 spritePos = ImVec2(sprite.x, sprite.y);
 		// Commented out the adjustments for focus point and zoom factor
-		// spritePos.x = (spritePos.x - focusPoint.x) * zoomFactor + focusPoint.x;
-		// spritePos.y = (spritePos.y - focusPoint.y) * zoomFactor + focusPoint.y;
+		spritePos.x = (spritePos.x - focusPoint.x) * zoomFactor + focusPoint.x;
+		spritePos.y = (spritePos.y - focusPoint.y) * zoomFactor + focusPoint.y;
 		// Flip Y coordinate because ImGui's coordinate system starts from the top
-		// spritePos.y = 720 - spritePos.y;
+		spritePos.y = 720 - spritePos.y;
 
 		// Adjust sprite position for the border and offset
 		spritePos.x += 50;
@@ -344,7 +344,7 @@ static void DrawElements() {
 		float scaledSpriteHeight = spriteHeight * zoomFactor; // This line might need adjustment if zoomFactor is not 1
 
 		// Check if the sprite is within the visible area
-		if (spritePos.x >= 0 && spritePos.x <= 1280 && spritePos.y >= 0 && spritePos.y <= 720) {
+		if (spritePos.x >= 0 && spritePos.x <= 1380 && spritePos.y >= 0 && spritePos.y <= 830) {
 			//std::cout << "Passed the condition" << std::endl;
 			// Draw the sprite
 			//if (isSpriteImageAvailable) {
@@ -357,7 +357,7 @@ static void DrawElements() {
 			//}
 			//else {
 				// Draw a placeholder circle if the sprite image is not available
-				draw_list->AddCircleFilled(spritePos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+			draw_list->AddCircleFilled(spritePos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 			/*}*/
 		}
 	}
@@ -451,49 +451,64 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 }
 
 void handleClient(boost::asio::ip::tcp::socket& socket) {
-	std::array<char, 1024> buffer;
-	socket.async_read_some(boost::asio::buffer(buffer),
-		[&socket, &buffer](boost::system::error_code ec, std::size_t bytes_transferred) {
-			if (!ec) {
-				std::string receivedMessage(buffer.data(), bytes_transferred);
-				std::cout << "Received message from client: " << receivedMessage << std::endl;
-				//std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+	// Will have to change buffer size to accommodate message length (from JSON)
+	constexpr size_t bufferSize = 1024;
+	std::array<char, bufferSize> buffer;
 
-				try {
-					//json j = json::parse(receivedMessage);
+	std::string message;
 
-					////check message if containing sprite data
-					//if (j.contains("x") && j.contains("y") && j.contains("speed")) {
-					//	// Sprite data
-					//	float x = j["x"].get<float>();
-					//	float y = j["y"].get<float>();
-					//	float speed = j["speed"].get<float>();
+	try {
+		boost::system::error_code error;
 
-					//	//find corresponding sprite and update pos and speed
-					//	for (auto& sprite : clientSprites) {
-					//		if (sprite.x == x && sprite.y == y) {
-					//			sprite.speed = speed;
-					//			sprite.Move(0, 0);
-					//			break;
-					//		}
-					//	}
-
-					//	// update the sprite
-					//	//explorerSprite->setPos(x, y);
-					//	//explorerSprite->speed = speed;
-					//	//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl;
-					//}
-				}
-				catch (json::parse_error& e) {
-					std::cerr << "Error parsing JSON: " << e.what() << std::endl;
-				}
-
-				// Continue reading from the client
-				handleClient(socket);
-			} else {
-				std::cerr << "Error reading from client: " << ec.message() << std::endl;
+		while (true) {
+			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
+			if (error) {
+				throw boost::system::system_error(error);
 			}
-		});
+			else {
+				message = std::string(buffer.data(), length);
+				std::cout << message << std::endl;
+				std::istringstream iss(message);
+				float firstFloat, secondFloat = 0.0f;
+
+				// Attempt to extract the first float
+				if (iss >> firstFloat) {
+					// If the first extraction is successful, attempt to extract the second float
+					if (iss >> secondFloat) {
+						std::cout << "First float: " << firstFloat << std::endl;
+						std::cout << "Second float: " << secondFloat << std::endl;
+					}
+					else {
+						std::cout << "Error: Could not extract the second float." << std::endl;
+					}
+				}
+				else {
+					std::cout << "Error: Could not extract the first float." << std::endl;
+				}
+				clientSprites[0].x = firstFloat;
+				clientSprites[0].y = secondFloat;
+			}
+			// The \0 appended approach to string reading:
+			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
+
+			//if (error) {
+			//	throw boost::system::system_error(error);
+			//}
+
+			//// Append received character to the message
+			//if (buffer[0] == '\0') {
+			//	break; // Null terminator encountered, end of message
+			//}
+			//else {
+			//	message.push_back(buffer[0]);
+			//}
+		}
+
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error receiving message: " << e.what() << std::endl;
+	}
+
 }
 
 void runServer(std::vector<tcp::socket>& clients) {
