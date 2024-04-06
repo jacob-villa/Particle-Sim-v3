@@ -8,9 +8,9 @@ public class Sprite {
         this.speed = speed;
     }
 
-    void move(float dx, float dy) {
-        x += dx;
-        y -= dy;
+    void move(float dx, float dy, float frameRate) {
+        x += dx / frameRate;
+        y -= dy / frameRate;
 
         if (x < 0) x = 0;
         if (x > 1280) x = 1280;
