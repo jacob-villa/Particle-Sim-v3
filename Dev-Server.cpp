@@ -190,7 +190,7 @@ public:
 	float speed;
 	GLuint textureID;
 
-	Sprite(float x, float y, float speed, GLuint textureID) : speed(speed), textureID(textureID) {}
+	Sprite(float x, float y, float speed, GLuint textureID) : x(x),y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -284,8 +284,8 @@ static void DrawElements() {
 		translation.y = 360 - explorerSprite->y;
 	}*/
 
-	float scaledBorderWidth = 1280 * zoomFactor; 
-	float scaledBorderHeight = 720 * zoomFactor; 
+	float scaledBorderWidth = 1280 * zoomFactor;
+	float scaledBorderHeight = 720 * zoomFactor;
 
 	ImVec2 newBorderPos1 = ImVec2(
 		(translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
@@ -293,72 +293,75 @@ static void DrawElements() {
 	);
 	ImVec2 newBorderPos2 = ImVec2(
 		(1280 + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-		(720 + translation.y - focusPoint.y)* zoomFactor + focusPoint.y
-			);
+		(720 + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+	);
 
-			newBorderPos1.y = 720 - newBorderPos1.y;
-			newBorderPos2.y = 720 - newBorderPos2.y;
+	newBorderPos1.y = 720 - newBorderPos1.y;
+	newBorderPos2.y = 720 - newBorderPos2.y;
 
-			newBorderPos1.x += 50;
-			newBorderPos1.y += 50;
+	newBorderPos1.x += 50;
+	newBorderPos1.y += 50;
 
-			newBorderPos2.x += 50;
-			newBorderPos2.y += 50;
+	newBorderPos2.x += 50;
+	newBorderPos2.y += 50;
 
-			ImColor purple = ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f);
-			draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), purple);
-			draw_list->AddRectFilled(newBorderPos1, newBorderPos2, ImColor(0, 0, 0, 255));
+	ImColor purple = ImVec4(85.0f / 255.0f, 0.0f, 85.0f / 255.0f, 1.0f);
+	draw_list->AddRectFilled(ImVec2(0, 0), ImVec2(1380, 820), purple);
+	draw_list->AddRectFilled(newBorderPos1, newBorderPos2, ImColor(0, 0, 0, 255));
 
-			float baseParticleRadius = 1.5f;
-			for (const auto& particle : particles) {
-				ImVec2 newPos = ImVec2(
-					(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-					(particle.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
-				);
+	float baseParticleRadius = 1.5f;
+	for (const auto& particle : particles) {
+		ImVec2 newPos = ImVec2(
+			(particle.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+			(particle.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+		);
 
-				newPos.y = 720 - newPos.y;
+		newPos.y = 720 - newPos.y;
 
-				if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-					newPos.x += 50;
-					newPos.y += 50;
+		if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+			newPos.x += 50;
+			newPos.y += 50;
 
-					float scaledParticleRadius = baseParticleRadius * zoomFactor;
+			float scaledParticleRadius = baseParticleRadius * zoomFactor;
 
-					draw_list->AddCircleFilled(newPos, scaledParticleRadius, ImColor(particleColor));
-				}
-			}
+			draw_list->AddCircleFilled(newPos, scaledParticleRadius, ImColor(particleColor));
+		}
+	}
+	for (const auto& sprite : clientSprites) {
+		ImVec2 spritePos = ImVec2(sprite.x, sprite.y);
+		// Commented out the adjustments for focus point and zoom factor
+		// spritePos.x = (spritePos.x - focusPoint.x) * zoomFactor + focusPoint.x;
+		// spritePos.y = (spritePos.y - focusPoint.y) * zoomFactor + focusPoint.y;
+		// Flip Y coordinate because ImGui's coordinate system starts from the top
+		// spritePos.y = 720 - spritePos.y;
 
-			/*if (currentMode == EXPLORER || explorerSprite) {
+		// Adjust sprite position for the border and offset
+		spritePos.x += 50;
+		spritePos.y += 50;
 
-				if (explorerSprite) {
-					ImVec2 newPos = ImVec2(
-						(explorerSprite->x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
-						(explorerSprite->y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
-					);
+		// Calculate scaled sprite dimensions
+		float scaledSpriteWidth = spriteWidth * zoomFactor; // This line might need adjustment if zoomFactor is not 1
+		float scaledSpriteHeight = spriteHeight * zoomFactor; // This line might need adjustment if zoomFactor is not 1
 
-					newPos.y = 720 - newPos.y;
-
-					if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
-						newPos.x += 50;
-						newPos.y += 50;
-
-						float scaledSpriteWidth = spriteWidth * zoomFactor;
-						float scaledSpriteHeight = spriteHeight * zoomFactor;
-
-						if (isSpriteImageAvailable) {
-							draw_list->AddImage(reinterpret_cast<void*>(explorerSprite->textureID),
-								ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
-								ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
-								ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
-						}
-						else {
-							draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
-						}
-					}
-				}
-			}*/
+		// Check if the sprite is within the visible area
+		if (spritePos.x >= 0 && spritePos.x <= 1280 && spritePos.y >= 0 && spritePos.y <= 720) {
+			//std::cout << "Passed the condition" << std::endl;
+			// Draw the sprite
+			//if (isSpriteImageAvailable) {
+			//	// Draw the sprite using its texture
+			//	draw_list->AddImage(reinterpret_cast<void*>(sprite.textureID),
+			//		ImVec2(spritePos.x - scaledSpriteWidth / 2, spritePos.y - scaledSpriteHeight / 2),
+			//		ImVec2(spritePos.x + scaledSpriteWidth / 2, spritePos.y + scaledSpriteHeight / 2),
+			//		ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+			//		std::cout << "Image Added" << std::endl;
+			//}
+			//else {
+				// Draw a placeholder circle if the sprite image is not available
+				draw_list->AddCircleFilled(spritePos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+			/*}*/
+		}
+	}
 }
-
 static void UpdateParticlesRange(std::vector<Particle>::iterator begin, std::vector<Particle>::iterator end, ImGuiIO& io) {
 	for (auto& it = begin; it != end; ++it) {
 		it->UpdatePosition(io);
@@ -452,7 +455,38 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 	socket.async_read_some(boost::asio::buffer(buffer),
 		[&socket, &buffer](boost::system::error_code ec, std::size_t bytes_transferred) {
 			if (!ec) {
-				std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+				std::string receivedMessage(buffer.data(), bytes_transferred);
+				std::cout << "Received message from client: " << receivedMessage << std::endl;
+				//std::cout << "Received message from client: " << std::string(buffer.data(), bytes_transferred) << std::endl;
+
+				try {
+					//json j = json::parse(receivedMessage);
+
+					////check message if containing sprite data
+					//if (j.contains("x") && j.contains("y") && j.contains("speed")) {
+					//	// Sprite data
+					//	float x = j["x"].get<float>();
+					//	float y = j["y"].get<float>();
+					//	float speed = j["speed"].get<float>();
+
+					//	//find corresponding sprite and update pos and speed
+					//	for (auto& sprite : clientSprites) {
+					//		if (sprite.x == x && sprite.y == y) {
+					//			sprite.speed = speed;
+					//			sprite.Move(0, 0);
+					//			break;
+					//		}
+					//	}
+
+					//	// update the sprite
+					//	//explorerSprite->setPos(x, y);
+					//	//explorerSprite->speed = speed;
+					//	//std::cout << "Sprite position: (" << x << ", " << y << ")" << std::endl;
+					//}
+				}
+				catch (json::parse_error& e) {
+					std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+				}
 
 				// Continue reading from the client
 				handleClient(socket);
@@ -483,8 +517,8 @@ void runServer(std::vector<tcp::socket>& clients) {
 
 				GLuint explorerTexture;
 				LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
-				Sprite newSprite = Sprite(400, 200, 100.0f, explorerTexture);
-
+				Sprite newSprite = Sprite(640.0f, 360.0f, 100.0f, explorerTexture);
+				std::cout << explorerTexture << std::endl;
 				clientSprites.push_back(newSprite);
 
 				// Send client its ID
