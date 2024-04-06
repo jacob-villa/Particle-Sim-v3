@@ -429,7 +429,7 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 
 	// Initialize the periodic task with a lambda that captures the timer and clients
 	PeriodicTask periodicTask = [&]() {
-		timer.expires_after(std::chrono::seconds(30));
+		timer.expires_after(std::chrono::seconds(10));
 		timer.async_wait([&](const boost::system::error_code& error) {
 			if (!error) {
 				// Send particles to clients
