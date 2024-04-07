@@ -222,7 +222,8 @@ public:
 	static Sprite fromJSON(const json& j) {
 		GLuint textureID;
 
-		return Sprite(j["x"].get<float>(),
+		return Sprite(
+			j["x"].get<float>(),
 			j["y"].get<float>(),
 			j["speed"].get<float>(),
 			textureID);
@@ -383,6 +384,7 @@ public:
 	std::mutex particlesMutex;
 	std::mutex spritesMutex;
 
+	int spriteID;
 	int clientID;
 
 	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
@@ -393,7 +395,7 @@ public:
 	}
 
 	void sendPosition(float x, float y) {
-		std::string message = std::to_string(x) + " " + std::to_string(y) + "\n";
+		std::string message = std::to_string(spriteID) + " " + std::to_string(x) + " " + std::to_string(y) + "\n";
 		boost::asio::write(socket, boost::asio::buffer(message));
 	}
 
@@ -511,6 +513,11 @@ public:
 
 		return particleVector;
 	}
+	void recieveSpriteId() {
+		std::cout << "went to recievespriteid func" << std::endl;
+		std::string receivedmsg = receiveMessage(socket);
+		std::cout << receivedmsg << "from recievespriteid func" << std::endl;
+		spriteID = std::stoi(receivedmsg);
 
 	std::vector<Sprite> deserializeSpriteMessage(const json jsonSprites) {
 		std::vector<Sprite> spriteVector;
@@ -547,7 +554,7 @@ public:
 
 		return spriteVector;
 	}
-
+    
 	void startAsyncReceive() {
 		std::thread receiveThread([this]() {
 			while (true) {
@@ -663,6 +670,7 @@ private:
 int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
 
+	networkClient.recieveSpriteId();
 	networkClient.startAsyncReceive();
 
 	// Print out all the particles

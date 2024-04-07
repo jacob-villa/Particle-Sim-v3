@@ -191,7 +191,7 @@ public:
 	float speed;
 	GLuint textureID;
 
-	Sprite(float x, float y, float speed, GLuint textureID) : x(x),y(y), speed(speed), textureID(textureID) {}
+	Sprite(int id, float x, float y, float speed, GLuint textureID) :id(id), x(x),y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -210,17 +210,20 @@ public:
 
 	json toJSON() const {
 		json j;
+    
 		j["clientID"] = clientID;
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
+		//dk where texture ID goes, but i assume here too in case
 		return j;
 	}
 
 	static Sprite fromJSON(const json& j) {
 		GLuint textureID;
 
-		return Sprite(j["x"].get<float>(),
+		return Sprite(j["id"].get<int>(),
+			j["x"].get<float>(),
 			j["y"].get<float>(),
 			j["speed"].get<float>(),
 			textureID);
@@ -496,7 +499,7 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	io_context.run();
 }
 
-void handleClient(boost::asio::ip::tcp::socket& socket) {
+void handleClient(boost::asio::ip::tcp::socket socket) {
 	// Will have to change buffer size to accommodate message length (from JSON)
 	constexpr size_t bufferSize = 1024;
 	std::array<char, bufferSize> buffer;
@@ -513,26 +516,33 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 			}
 			else {
 				message = std::string(buffer.data(), length);
-				std::cout << message << std::endl;
+				//std::cout << message << std::endl;
 				std::istringstream iss(message);
-				float firstFloat, secondFloat = 0.0f;
+				int id = 0;
+				float x, y = 0.0f;
 
 				// Attempt to extract the first float
-				if (iss >> firstFloat) {
-					// If the first extraction is successful, attempt to extract the second float
-					if (iss >> secondFloat) {
-						std::cout << "First float: " << firstFloat << std::endl;
-						std::cout << "Second float: " << secondFloat << std::endl;
+				if (iss >> id) {
+					// Read the second word (float1)
+					if (iss >> x) {
+						// Read the third word (float2)
+						if (iss >> y) {
+							//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
+						}
+						else {
+							std::cerr << "Error: Could not parse the third float." << std::endl;
+						}
 					}
 					else {
-						std::cout << "Error: Could not extract the second float." << std::endl;
+						std::cerr << "Error: Could not parse the second float." << std::endl;
 					}
 				}
 				else {
-					std::cout << "Error: Could not extract the first float." << std::endl;
+					std::cerr << "Error: Could not parse the ID." << std::endl;
 				}
-				clientSprites[0].x = firstFloat;
-				clientSprites[0].y = secondFloat;
+				std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
+				clientSprites[id-1].x = x;
+				clientSprites[id-1].y = y;
 			}
 			// The \0 appended approach to string reading:
 			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
@@ -557,63 +567,61 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 
 }
 
+std::mutex mtx;
+
 void runServer(std::vector<tcp::socket>& clients) {
 	try {
+		std::cout << "Server listening...on port: " << port << std::endl;
+
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
-		std::cout << "Server listening...on port: " << port << std::endl;
+		// Use a loop to continuously accept new clients
+		while (true) {
 
-		// Start accepting clients in a separate thread
-		acceptor.async_accept([&](const boost::system::error_code& error, boost::asio::ip::tcp::socket socket) {
-			if (!error) {
-				std::cout << "New client connected." << std::endl;
-				// mutex lock
-				clients.push_back(std::move(socket));
-				// unlock
+			tcp::socket socket(io_context);
+			acceptor.accept(socket);
 
-				// mutex lock
-				clientCtr++;
-				// unlock
+			std::cout << "New client connected." << std::endl;
+			//unique mutex lock
+			std::unique_lock<std::mutex> lock(mtx);
+			clients.push_back(std::move(socket));
+			clientCtr++;
+			lock.unlock();
 
-				GLuint explorerTexture;
-				LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
-				Sprite newSprite = Sprite(640.0f, 360.0f, 100.0f, explorerTexture);
-				std::cout << explorerTexture << std::endl;
-				clientSprites.push_back(newSprite);
+			GLuint explorerTexture;
+			LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
+			Sprite newSprite = Sprite(clientCtr, 640.0f, 360.0f, 100.0f, explorerTexture);
+			//std::cout << explorerTexture << std::endl;
+			clientSprites.push_back(newSprite);
 
-				// Send client its ID
-				std::string IDMsg = "ID\n" + std::to_string(clientCtr);
-				//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
+			// Send client its ID
+			std::string IDMsg = "ID\n" + std::to_string(clientCtr);
+			//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
+			std::string id_message = std::to_string(clientCtr);
+			boost::asio::write(clients[clientCtr - 1], boost::asio::buffer(id_message));
+			sendParticles(clients);
 
-				sendParticles(clients);
-
-				std::thread clientThread(handleClient, std::ref(clients.back()));
-				clientThread.detach();
-
-				runServer(clients);
-			}
-			else {
-				std::cerr << "Error accepting client: " << error.message() << std::endl;
-			}
-		});
-
-		io_context.run();
-
-		
+			std::thread clientThread(handleClient, std::move(clients.back()));
+			clientThread.detach();
+			//clientThreads.emplace_back(handleClient, std::ref(clients[clientCtr - 1]));
+			//clientThreads.back().detach();
+		}
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
 	}
 }
 
+
 int main(int argc, char *argv) {
 
 	std::vector<tcp::socket> clients;
+	std::vector<std::thread> clientThreads;
 
-	
-
+	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
 	std::thread serverThread(runServer, std::ref(clients));
+	serverThread.detach();
 
 	// Start the periodic sending in a separate thread
 	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
@@ -988,6 +996,12 @@ int main(int argc, char *argv) {
 	}
 
 	serverThread.join();
+
+	/*for (auto& thread : clientThreads) {
+		if (thread.joinable()) {
+			thread.join();
+		}
+	}*/
 
 	/*if (explorerSprite) {
 		glDeleteTextures(1, &explorerSprite->textureID);
