@@ -90,7 +90,10 @@ public class ParticlesDrawArea extends JPanel {
         AffineTransform at = new AffineTransform();
         at.translate(getWidth() / 2f, getHeight() / 2f); // Translate to center the scaled area
         at.scale(zoomX, zoomY); // Apply scaling
-        at.translate(-MainGUI.getScaledWidth((int) userSprite.x), -MainGUI.getScaledHeight((int) userSprite.y)); // Translate to adjust for starting position (optional)
+        at.translate(
+                -MainGUI.getScaledWidth((int) userSprite.x)+(ovalSize/2f),
+                MainGUI.getScaledHeight((int) userSprite.y) - MainGUI.getScaledHeight(720)
+        );
 
         // Apply the transformation to the graphics context
         g2d.setTransform(at);
