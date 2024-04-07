@@ -17,6 +17,7 @@ public class Controller {
             public void actionPerformed(ActionEvent e) {
                 Main.tasksQueue.add(new Task(ParticlesDrawArea.userSprite, 0, -ParticlesDrawArea.spriteSpeed, ParticlesDrawArea.frameRate));
                 MainGUI.userY.setText("User Y: " + ParticlesDrawArea.userSprite.y);
+//                ParticlesDrawArea.particles.add(new Particle(10, 90, 35, 100));
             }
         });
 
