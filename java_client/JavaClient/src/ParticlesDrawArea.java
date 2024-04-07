@@ -18,6 +18,8 @@ public class ParticlesDrawArea extends JPanel {
 
     static CopyOnWriteArrayList<Particle> particles = new CopyOnWriteArrayList<>();
 
+    static CopyOnWriteArrayList<Sprite> sprites = new CopyOnWriteArrayList<>();
+
     public Graphics2D g2d = null;
     public static int ovalSize = 10;
     public static int particleSize = 3;
