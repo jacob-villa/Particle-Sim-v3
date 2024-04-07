@@ -186,11 +186,12 @@ std::vector<Particle> particles;
 
 class Sprite {
 public:
+	int id;
 	float x, y;
 	float speed;
 	GLuint textureID;
 
-	Sprite(float x, float y, float speed, GLuint textureID) : x(x),y(y), speed(speed), textureID(textureID) {}
+	Sprite(int id, float x, float y, float speed, GLuint textureID) :id(id), x(x),y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -209,16 +210,19 @@ public:
 
 	json toJSON() const {
 		json j;
+		j["id"] = id;
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
+		//dk where texture ID goes, but i assume here too in case
 		return j;
 	}
 
 	static Sprite fromJSON(const json& j) {
 		GLuint textureID;
 
-		return Sprite(j["x"].get<float>(),
+		return Sprite(j["id"].get<int>(),
+			j["x"].get<float>(),
 			j["y"].get<float>(),
 			j["speed"].get<float>(),
 			textureID);
@@ -467,26 +471,33 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 			}
 			else {
 				message = std::string(buffer.data(), length);
-				std::cout << message << std::endl;
+				//std::cout << message << std::endl;
 				std::istringstream iss(message);
-				float firstFloat, secondFloat = 0.0f;
+				int id = 0;
+				float x, y = 0.0f;
 
 				// Attempt to extract the first float
-				if (iss >> firstFloat) {
-					// If the first extraction is successful, attempt to extract the second float
-					if (iss >> secondFloat) {
-						std::cout << "First float: " << firstFloat << std::endl;
-						std::cout << "Second float: " << secondFloat << std::endl;
+				if (iss >> id) {
+					// Read the second word (float1)
+					if (iss >> x) {
+						// Read the third word (float2)
+						if (iss >> y) {
+							//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
+						}
+						else {
+							std::cerr << "Error: Could not parse the third float." << std::endl;
+						}
 					}
 					else {
-						std::cout << "Error: Could not extract the second float." << std::endl;
+						std::cerr << "Error: Could not parse the second float." << std::endl;
 					}
 				}
 				else {
-					std::cout << "Error: Could not extract the first float." << std::endl;
+					std::cerr << "Error: Could not parse the ID." << std::endl;
 				}
-				clientSprites[0].x = firstFloat;
-				clientSprites[0].y = secondFloat;
+
+				clientSprites[id-1].x = x;
+				clientSprites[id-1].y = y;
 			}
 			// The \0 appended approach to string reading:
 			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
@@ -512,7 +523,7 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 }
 
 void runServer(std::vector<tcp::socket>& clients) {
-	try {
+		try {
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
@@ -532,17 +543,21 @@ void runServer(std::vector<tcp::socket>& clients) {
 
 				GLuint explorerTexture;
 				LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
-				Sprite newSprite = Sprite(640.0f, 360.0f, 100.0f, explorerTexture);
-				std::cout << explorerTexture << std::endl;
+				Sprite newSprite = Sprite(clientCtr, 640.0f, 360.0f, 100.0f, explorerTexture);
+				//std::cout << explorerTexture << std::endl;
 				clientSprites.push_back(newSprite);
 
 				// Send client its ID
 				std::string IDMsg = "ID\n" + std::to_string(clientCtr);
 				//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
-
+				std::string id_message = std::to_string(clientCtr);
+				boost::asio::write(clients[clientCtr - 1], boost::asio::buffer(id_message));
 				sendParticles(clients);
 
-				std::thread clientThread(handleClient, std::ref(clients.back()));
+				
+				
+
+				std::thread clientThread(handleClient, std::ref(clients[clientCtr-1]));
 				clientThread.detach();
 
 				runServer(clients);
@@ -564,8 +579,6 @@ void runServer(std::vector<tcp::socket>& clients) {
 int main(int argc, char *argv) {
 
 	std::vector<tcp::socket> clients;
-
-	
 
 	std::thread serverThread(runServer, std::ref(clients));
 
