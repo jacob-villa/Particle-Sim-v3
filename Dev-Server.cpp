@@ -186,7 +186,7 @@ std::vector<Particle> particles;
 
 class Sprite {
 public:
-	int id;
+	int clientID;
 	float x, y;
 	float speed;
 	GLuint textureID;
@@ -210,7 +210,8 @@ public:
 
 	json toJSON() const {
 		json j;
-		j["id"] = id;
+    
+		j["clientID"] = clientID;
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
@@ -382,6 +383,32 @@ json particleToJSON(Particle particle) {
 	return j;
 }
 
+std::string serializeSprites(const std::vector<Sprite>& sprites) {
+	std::vector<int> xValues;
+	std::vector<int> yValues;
+	std::vector<int> speedValues;
+
+	for (const auto& sprite : sprites) {
+		xValues.push_back(sprite.x);
+		yValues.push_back(sprite.y);
+		speedValues.push_back(sprite.speed);
+	}
+
+	json j;
+	j["x"] = xValues;
+	j["y"] = yValues;
+	j["speed"] = speedValues;
+	j["message_type"] = "Sprites";
+
+	std::string serializedSprites = j.dump();
+
+	// Insert | at end of message
+	serializedSprites.push_back('|');
+
+	return serializedSprites;
+
+}
+
 // Returns the message to be sent to the clients
 std::string serializeParticles(const std::vector<Particle>& particles) {
 	std::vector<int> xValues;
@@ -401,6 +428,7 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	j["y"] = yValues;
 	j["angle"] = angleValues;
 	j["velocity"] = velocityValues;
+	j["message_type"] = "Particles";
 
 	std::string serializedParticles = j.dump();
 
@@ -427,6 +455,20 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 	}
 }
 
+void sendSprites(std::vector<tcp::socket>& clients) {
+	try {
+		std::string spriteMessage = serializeSprites(clientSprites);
+
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(spriteMessage));
+		}
+
+	}
+	catch (std::exception& e) {
+		std::cerr << "Exception in server: " << e.what() << "\n";
+	}
+}	
+
 void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
@@ -441,6 +483,9 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 			if (!error) {
 				// Send particles to clients
 				sendParticles(std::ref(clients));
+				// Send sprites to clients
+				sendSprites(std::ref(clients));
+
 				// Reschedule the timer
 				periodicTask();
 			}
@@ -454,7 +499,7 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	io_context.run();
 }
 
-void handleClient(boost::asio::ip::tcp::socket& socket) {
+void handleClient(boost::asio::ip::tcp::socket socket) {
 	// Will have to change buffer size to accommodate message length (from JSON)
 	constexpr size_t bufferSize = 1024;
 	std::array<char, bufferSize> buffer;
@@ -495,7 +540,7 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 				else {
 					std::cerr << "Error: Could not parse the ID." << std::endl;
 				}
-
+				std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
 				clientSprites[id-1].x = x;
 				clientSprites[id-1].y = y;
 			}
@@ -524,15 +569,16 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 
 std::mutex mtx;
 
-void runServer(std::vector<tcp::socket>& clients, std::vector<std::thread>& clientThreads) {
+void runServer(std::vector<tcp::socket>& clients) {
 	try {
+		std::cout << "Server listening...on port: " << port << std::endl;
+
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
-		std::cout << "Server listening...on port: " << port << std::endl;
-
 		// Use a loop to continuously accept new clients
 		while (true) {
+
 			tcp::socket socket(io_context);
 			acceptor.accept(socket);
 
@@ -556,9 +602,10 @@ void runServer(std::vector<tcp::socket>& clients, std::vector<std::thread>& clie
 			boost::asio::write(clients[clientCtr - 1], boost::asio::buffer(id_message));
 			sendParticles(clients);
 
-			/*std::thread clientThread(handleClient, std::ref(clients[clientCtr - 1]));
-			clientThread.detach();*/
-			clientThreads.emplace_back(handleClient, std::ref(clients[clientCtr - 1]));
+			std::thread clientThread(handleClient, std::move(clients.back()));
+			clientThread.detach();
+			//clientThreads.emplace_back(handleClient, std::ref(clients[clientCtr - 1]));
+			//clientThreads.back().detach();
 		}
 	}
 	catch (std::exception& e) {
@@ -572,7 +619,9 @@ int main(int argc, char *argv) {
 	std::vector<tcp::socket> clients;
 	std::vector<std::thread> clientThreads;
 
-	std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
+	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
+	std::thread serverThread(runServer, std::ref(clients));
+	serverThread.detach();
 
 	// Start the periodic sending in a separate thread
 	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
@@ -948,11 +997,11 @@ int main(int argc, char *argv) {
 
 	serverThread.join();
 
-	for (auto& thread : clientThreads) {
+	/*for (auto& thread : clientThreads) {
 		if (thread.joinable()) {
 			thread.join();
 		}
-	}
+	}*/
 
 	/*if (explorerSprite) {
 		glDeleteTextures(1, &explorerSprite->textureID);
