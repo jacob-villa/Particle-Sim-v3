@@ -1,16 +1,16 @@
 public class Sprite {
     float x, y;
-    float speed;
+    float speedMult;
 
     Sprite(float x, float y, float speed){
         this.x = x;
         this.y = y;
-        this.speed = speed;
+        this.speedMult = speed;
     }
 
     void move(float dx, float dy, float frameRate) {
-        x += dx / frameRate;
-        y -= dy / frameRate;
+        x += dx * speedMult / frameRate;
+        y -= dy * speedMult / frameRate;
 
         if (x < 0) x = 0;
         if (x > 1280) x = 1280;

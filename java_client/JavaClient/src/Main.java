@@ -9,8 +9,17 @@ public class Main {
     public static DelayQueue<Task> tasksQueue = new DelayQueue<>();
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
+        Controller.initListeners();
+        MainGUI.initGUI();
+        RunnableRender renderTask = new RunnableRender();
+        Thread renderThread = new Thread(renderTask);
 
-        MainGUI.initializeGUI();
+        threadPool.execute(new RunnableTask(tasksQueue.take()) {
+        });
+        renderThread.start();
+        while(true) {
+            threadPool.execute(new RunnableTask(tasksQueue.take()));
+        }
     }
 }
