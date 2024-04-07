@@ -1,12 +1,24 @@
 import javax.swing.*;
 import java.awt.event.ActionEvent;
-
+import java.io.IOException;
 
 
 public class Controller {
 
+    public static NetworkClient tcpClient;
 
-    public static void initListeners(){
+    static {
+        try {
+            tcpClient = new NetworkClient("127.0.0.1", 4160);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Controller() throws IOException {
+    }
+
+    public static void initListeners() throws IOException {
 
         MainGUI.parentPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
                 KeyStroke.getKeyStroke("pressed W"),
@@ -18,6 +30,7 @@ public class Controller {
                 Main.tasksQueue.add(new Task(ParticlesDrawArea.userSprite, 0, -ParticlesDrawArea.spriteSpeed, ParticlesDrawArea.frameRate));
                 MainGUI.userY.setText("User Y: " + ParticlesDrawArea.userSprite.y);
 //                ParticlesDrawArea.particles.add(new Particle(10, 90, 35, 100));
+                tcpClient.sendMessage("herm");
             }
         });
 

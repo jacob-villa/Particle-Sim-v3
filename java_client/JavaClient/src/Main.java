@@ -17,8 +17,6 @@ public class Main {
         Thread renderThread = new Thread(renderTask);
         renderThread.start();
 
-        NetworkClient tcpClient = new NetworkClient("127.0.0.1", 4160);
-
         threadPool.execute(new RunnableTask(tasksQueue.take()) {
         });
 
