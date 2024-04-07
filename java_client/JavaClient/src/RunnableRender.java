@@ -1,8 +1,9 @@
 import javax.swing.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RunnableRender implements Runnable{
-    static float fps = 0;
-    static int frames = 0;
+    static float fps = 300;
+    static int frames = 300;
     @Override
     public void run() {
         runTimers();
@@ -18,7 +19,7 @@ public class RunnableRender implements Runnable{
     private void runTimers() {
         Timer timer = new Timer(500, e ->{
             fps = frames / 0.5f;
-            MainGUI.fpsValue.setText("FPS: "+ String.valueOf(fps));
+            MainGUI.fpsValue.setText("FPS: "+ fps);
             frames = 0;
         });
         timer.start();

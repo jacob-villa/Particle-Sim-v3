@@ -21,12 +21,17 @@ public class ParticlesDrawArea extends JPanel {
     static CopyOnWriteArrayList<Particle> particles = new CopyOnWriteArrayList<>();
 
     public Graphics2D g2d = null;
-    private int ovalSize = 10;
+    public static int ovalSize = 10;
+    public static int particleSize = 3;
 
     ParticlesDrawArea() {
         super();
         this.setBackground(Color.BLACK);
         this.setOpaque(true);
+
+        particles.add(new Particle(10, 90, 35, 100));
+        particles.add(new Particle(10, 150, 35, 100));
+        particles.add(new Particle(10, 200, 35, 100));
     }
 
     public void paintComponent(Graphics g){
@@ -38,7 +43,7 @@ public class ParticlesDrawArea extends JPanel {
 //                MainGUI.getScaledWidth((int)userSprite.x),
 //                MainGUI.getScaledHeight((int)userSprite.y)
 //        );
-//
+
 //        g2d.setTransform(new AffineTransform());
 //        g2d.scale(
 //                (double) getWidth() / MainGUI.getScaledWidth(33 * ovalSize),
@@ -57,12 +62,31 @@ public class ParticlesDrawArea extends JPanel {
 
         g2d.setColor(Color.BLUE);
         g2d.fillOval(
-                MainGUI.getScaledWidth((int)userSprite.x),
-                MainGUI.getScaledHeight(720) - MainGUI.getScaledHeight((int)userSprite.y),
+                MainGUI.getScaledWidth((int)userSprite.x) - (ovalSize/2),
+                MainGUI.getScaledHeight(720) - MainGUI.getScaledHeight((int)userSprite.y) - (ovalSize/2),
                 ovalSize,
                 ovalSize
         );
+//        System.out.println(particles.size());
+
+        for(int i = 0; i < particles.size(); i++) {
+            Particle p = ParticlesDrawArea.particles.get(i);
+//            if(p.x >= sprite.x - 9 && p.x <= (sprite.x + 288) && p.y >= sprite.y - 9 && p.y <= (sprite.y + 162)){
+//                g.setColor(Color.white);
+//                g.fillOval(MainGUI.getScaledWidth((int)p.x), MainGUI.getScaledHeight((int)p.y), ParticlesDrawArea.ovalSize, ParticlesDrawArea.ovalSize);
+//            } else {
+//                g.setColor(Color.white);
+//                g.fillOval(MainGUI.getScaledWidth((int)p.x), MainGUI.getScaledHeight((int)p.y), ParticlesDrawArea.ovalSize, ParticlesDrawArea.ovalSize);
+//            }
+            g.setColor(Color.white);
+            g.fillOval(MainGUI.getScaledWidth((int)p.x) - (particleSize/2), MainGUI.getScaledHeight((int)p.y) - (particleSize/2), ParticlesDrawArea.particleSize, ParticlesDrawArea.particleSize);
+            // arbitrary framerate when initialized
+            p.updatePosition(RunnableRender.fps > 350 || RunnableRender.fps <= 0  ? 250 : RunnableRender.fps);
+        }
+
+        RunnableRender.frames++;
+
+        g2d.dispose();
+        repaint();
     }
-
-
 }

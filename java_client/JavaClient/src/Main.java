@@ -14,10 +14,10 @@ public class Main {
         MainGUI.initGUI();
         RunnableRender renderTask = new RunnableRender();
         Thread renderThread = new Thread(renderTask);
-
+        renderThread.start();
         threadPool.execute(new RunnableTask(tasksQueue.take()) {
         });
-        renderThread.start();
+
         while(true) {
             threadPool.execute(new RunnableTask(tasksQueue.take()));
         }

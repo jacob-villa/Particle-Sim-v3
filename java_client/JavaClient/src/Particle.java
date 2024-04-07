@@ -13,7 +13,7 @@ public class Particle {
     }
 
     public void updatePosition(float frameRate){
-        float radians = (float) (angle * PI / 180.0);
+        float radians = (float) ((angle * PI) / 180.0);
 
         float dx = (float) (Math.cos(radians) * velocity / frameRate);
         float dy = (float) (Math.sin(radians) * velocity / frameRate);
