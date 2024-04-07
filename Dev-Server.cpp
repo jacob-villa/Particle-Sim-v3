@@ -524,7 +524,7 @@ void handleClient(boost::asio::ip::tcp::socket& socket) {
 
 std::mutex mtx;
 
-void runServer(std::vector<tcp::socket>& clients, std::vector<std::thread>& clientThreads) {
+void runServer(std::vector<tcp::socket>& clients) {
 	try {
 		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
@@ -556,9 +556,8 @@ void runServer(std::vector<tcp::socket>& clients, std::vector<std::thread>& clie
 			boost::asio::write(clients[clientCtr - 1], boost::asio::buffer(id_message));
 			sendParticles(clients);
 
-			/*std::thread clientThread(handleClient, std::ref(clients[clientCtr - 1]));
-			clientThread.detach();*/
-			clientThreads.emplace_back(handleClient, std::ref(clients[clientCtr - 1]));
+			std::thread clientThread(handleClient, std::ref(clients[clientCtr - 1]));
+			clientThread.detach();
 		}
 	}
 	catch (std::exception& e) {
@@ -570,9 +569,8 @@ void runServer(std::vector<tcp::socket>& clients, std::vector<std::thread>& clie
 int main(int argc, char *argv) {
 
 	std::vector<tcp::socket> clients;
-	std::vector<std::thread> clientThreads;
 
-	std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
+	std::thread serverThread(runServer, std::ref(clients));
 
 	// Start the periodic sending in a separate thread
 	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
@@ -947,12 +945,6 @@ int main(int argc, char *argv) {
 	}
 
 	serverThread.join();
-
-	for (auto& thread : clientThreads) {
-		if (thread.joinable()) {
-			thread.join();
-		}
-	}
 
 	/*if (explorerSprite) {
 		glDeleteTextures(1, &explorerSprite->textureID);
