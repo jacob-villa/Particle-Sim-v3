@@ -12,7 +12,7 @@ public class Main {
     public static void main(String[] args) throws InterruptedException {
         Controller.initListeners();
         MainGUI.initGUI();
-        RunnableRender renderTask = new RunnableRender();
+        RunnableTimer renderTask = new RunnableTimer();
         Thread renderThread = new Thread(renderTask);
         renderThread.start();
         threadPool.execute(new RunnableTask(tasksQueue.take()) {

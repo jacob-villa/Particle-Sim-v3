@@ -1,7 +1,6 @@
 import javax.swing.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
-public class RunnableRender implements Runnable{
+public class RunnableTimer implements Runnable{
     static float fps = 300;
     static int frames = 300;
     @Override
