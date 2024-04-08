@@ -496,7 +496,7 @@ void sendParticles() {
 					}
 					else {
 						// Handle error
-						std::cerr << "Error in async_write: " << error.message() << std::endl;
+						std::cerr << "Error in sendParticles async_write: " << error.message() << std::endl;
 					}
 				}
 			);
@@ -521,9 +521,24 @@ void sendSprites() {
 		std::string spriteMessage = serializeSprites(clientSprites);
 
 		for (auto& clientPtr : clients) {
-			boost::asio::write(*clientPtr, boost::asio::buffer(spriteMessage));
-		}
+			boost::shared_ptr<boost::asio::ip::tcp::socket> sharedClientPtr = clientPtr;
+			boost::asio::async_write(*clientPtr, boost::asio::buffer(spriteMessage),
+				[sharedClientPtr](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+					std::cout << "before error checking" << std::endl;
+					if (!error) {
+						// Write completed successfully
+						std::cout << "Sprite message sent to client" << std::endl;
+					}
+					else {
+						// Handle error
+						std::cerr << "Error in sendSprites async_write: " << error.message() << std::endl;
+					}
+				}
+			);
 
+			//boost::asio::write(*sharedClientPtr, boost::asio::buffer(spriteMessage));
+		}
+		std::cout << "dasdasddasdasda" << std::endl;
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
@@ -542,7 +557,7 @@ void sendSprites() {
 				// Send particles to clients
 				sendParticles();
 				// Send sprites to clients
-				//sendSprites();
+				sendSprites();
 
 				// Reschedule the timer
 				runPeriodicSend();
@@ -1090,6 +1105,7 @@ int main(int argc, char *argv) {
 			currentFramerate = io.Framerate;
 			std::cout << "Framerate: " << currentFramerate << " FPS" << std::endl;
 			lastFPSUpdateTime = currentTime;
+			sendSprites();
 		}
 
 		ImGui::Render();

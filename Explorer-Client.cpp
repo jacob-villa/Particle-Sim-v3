@@ -353,6 +353,41 @@ static void DrawElements() {
 					draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
 				}
 			}
+
+			// Verify contents of sprite vector
+			for (const auto& sprite : sprites) {
+				std::cout << "Client # " << sprite.clientID << " at (" << sprite.x << ", " << sprite.y << ")" << std::endl;
+			}
+
+			for (const auto& sprite : sprites) {
+				if (sprite.clientID != explorerSprite->clientID) { // Ensure not drawing the explorer sprite
+					ImVec2 newPos = ImVec2(
+						(sprite.x + translation.x - focusPoint.x) * zoomFactor + focusPoint.x,
+						(sprite.y + translation.y - focusPoint.y) * zoomFactor + focusPoint.y
+					);
+
+					newPos.y = 720 - newPos.y;
+
+					if (newPos.x >= 0 && newPos.x <= 1280 && newPos.y >= 0 && newPos.y <= 720) {
+						newPos.x += 50;
+						newPos.y += 50;
+
+						float scaledSpriteWidth = spriteWidth * zoomFactor;
+						float scaledSpriteHeight = spriteHeight * zoomFactor;
+
+						// if (isSpriteImageAvailable) {
+						// 	draw_list->AddImage(reinterpret_cast<void*>(sprite.textureID),
+						// 		ImVec2(newPos.x - scaledSpriteWidth / 2, newPos.y - scaledSpriteHeight / 2),
+						// 		ImVec2(newPos.x + scaledSpriteWidth / 2, newPos.y + scaledSpriteHeight / 2),
+						// 		ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255));
+						// }
+						// else {
+							std::cout << "default sprite" << std::endl;
+							draw_list->AddCircleFilled(newPos, scaledSpriteWidth / 2, ImColor(0, 255, 255, 255));
+						// }
+					}
+				}
+			}
 		}
 	}
 }
@@ -553,12 +588,14 @@ public:
 			std::vector<json> speedValues = jsonSprites["speed"];
 			std::vector<json> clientIDValues = jsonSprites["clientID"];
 
+			GLuint textureID;
+
 			// Ensure all arrays have the same size
 			if (xValues.size() == yValues.size() &&
 				xValues.size() == speedValues.size() &&
 				xValues.size() == clientIDValues.size()) {
 				for (size_t i = 0; i < clientIDValues.size(); ++i) {
-					spriteVector.emplace_back(clientIDValues[i], xValues[i], yValues[i], speedValues[i], clientIDValues[i]);
+					spriteVector.emplace_back(clientIDValues[i], xValues[i], yValues[i], speedValues[i], textureID);
 				}
 			}
 			else {
@@ -610,20 +647,24 @@ public:
 					}
 
 					else if (jsonMessage["message_type"] == "Sprites") {
+						std::cout << "Sprites detected" << std::endl;
 						receivedSprites = deserializeSpriteMessage(jsonMessage);
-
+						
 						std::unique_lock<std::mutex> spriteVectorLock(spritesMutex);
-						for (int i = 0; i < receivedSprites.size(); i++) {
+						
+						/*for (int i = 0; i < receivedSprites.size(); i++) {
 							for (int j = 0; j < sprites.size(); j++) {
 								if (receivedSprites[i].clientID == sprites[j].clientID && receivedSprites[i].clientID != spriteID) {
 									sprites[j].x = receivedSprites[i].x;
 									sprites[j].y = receivedSprites[i].y;
 									sprites[j].speed = receivedSprites[i].speed;
 
+									// sprites.push_back(receivedSprites[i]);
 									break;
 								}
 							}
-						}
+						}*/
+						sprites = receivedSprites;
 						spriteVectorLock.unlock();
 					}
 					// recurse receiving
