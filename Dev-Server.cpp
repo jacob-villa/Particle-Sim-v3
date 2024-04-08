@@ -560,46 +560,83 @@ void runPeriodicSend() {
 std::mutex spriteVectorMutex;
 
 void handleClient(int pos) {
+	// Will have to change buffer size to accommodate message length (from JSON)
 	constexpr size_t bufferSize = 1024;
 	std::array<char, bufferSize> buffer;
+
 	std::string message;
 
 	try {
-		clients[pos]->async_read_some(
-			boost::asio::buffer(buffer),
-			[pos, &buffer, &message](const boost::system::error_code& error, std::size_t bytes_transferred) {
-				if (!error) {
-					std::cout << message << std::endl;
-					message.append(buffer.data(), bytes_transferred);
-					std::size_t delimiter_pos = message.find('\0');
-					if (delimiter_pos != std::string::npos) {
-						// Process the complete message
-						std::istringstream iss(message.substr(0, delimiter_pos));
-						int id = 0;
-						float x, y = 0.0f;
-						if (iss >> id >> x >> y) {
-							// Update clientSprites or do other processing
-							// ...
+		boost::system::error_code error;
+
+		while (true) {
+			size_t length = clients[pos]->read_some(boost::asio::buffer(buffer), error);
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+			else {
+				message = std::string(buffer.data(), length);
+				//std::cout << message << std::endl;
+				std::istringstream iss(message);
+				int id = 0;
+				float x, y = 0.0f;
+
+				// Attempt to extract the first float
+				if (iss >> id) {
+					// Read the second word (float1)
+					if (iss >> x) {
+						// Read the third word (float2)
+						if (iss >> y) {
+							//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
 						}
 						else {
-							std::cerr << "Error: Could not parse the message." << std::endl;
+							std::cerr << "Error: Could not parse the third float." << std::endl;
 						}
-						message.clear(); // Clear the processed part of the message
 					}
-					// Continue reading recursively
-					handleClient(pos);
+					else {
+						std::cerr << "Error: Could not parse the second float." << std::endl;
+					}
 				}
 				else {
-					// Handle error
-					std::cerr << "Error during async_read_some: " << error.message() << std::endl;
-					exit(0);
+					std::cerr << "Error: Could not parse the ID." << std::endl;
 				}
-			});
+				//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
+
+				//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
+				/*clientSprites[id - 1].x = x;
+				clientSprites[id - 1].y = y;*/
+				for (int i = 0; i < clientSprites.size(); i++) {
+					if (clientSprites[i].clientID == id) {
+						clientSprites[i].x = x;
+						clientSprites[i].y = y;
+						break;
+					}	
+				}
+				//clientSemaphore.notify();
+				//spriteVectorLock.unlock();
+				
+			}
+			// The \0 appended approach to string reading:
+			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
+
+			//if (error) {
+			//	throw boost::system::system_error(error);
+			//}
+
+			//// Append received character to the message
+			//if (buffer[0] == '\0') {
+			//	break; // Null terminator encountered, end of message
+			//}
+			//else {
+			//	message.push_back(buffer[0]);
+			//}
+		}
+
 	}
 	catch (const std::exception& e) {
 		std::cerr << "Error receiving message: " << e.what() << std::endl;
-		exit(0);
 	}
+
 }
 
 

@@ -579,77 +579,63 @@ public:
 		std::cout << "received Sprite ID from server" << std::endl;
 	}
 
-	std::thread startAsyncReceive() {
-		return std::thread([this]() {
-			try {
-				while (true) {
-					constexpr size_t bufferSize = 1024;
-					std::array<char, bufferSize> buffer;
+	void startAsyncReceive() {
+		constexpr size_t bufferSize = 1024;
+		std::array<char, bufferSize> buffer;
+		
+		(*socketPtr).async_read_some(boost::asio::buffer(buffer),
+			[this, &buffer](const boost::system::error_code& error, std::size_t length) {
+				if (!error) {
+					std::string receivedMsg(buffer.data(), length);
+					std::cout << "receivedMsg: " << receivedMsg << std::endl;
 
-					(*socketPtr).async_read_some(boost::asio::buffer(buffer),
-						[this, &buffer](const boost::system::error_code& error, std::size_t length) {
-							if (!error) {
-								std::string receivedMsg(buffer.data(), length);
-								std::cout << "receivedMsg: " << receivedMsg << std::endl;
+					std::vector<Particle> receivedParticles;
+					std::vector<Sprite> receivedSprites;
 
-								std::vector<Particle> receivedParticles;
-								std::vector<Sprite> receivedSprites;
+					json jsonMessage = deserializeAndParseMessage(receivedMsg);
 
-								json jsonMessage = deserializeAndParseMessage(receivedMsg);
+					if (jsonMessage["message_type"] == "Particles") {
+						std::cout << "Received particles message." << std::endl;
+						receivedParticles = deserializeParticleMessage(jsonMessage);
 
-								if (jsonMessage["message_type"] == "Particles") {
-									std::cout << "Received particles message." << std::endl;
-									receivedParticles = deserializeParticleMessage(jsonMessage);
+						std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+						if (!checkParticlesConsistency(receivedParticles)) {
+							std::cout << getTimestamp() << ": Syncing particles..." << std::endl;
 
-									std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
-									if (!checkParticlesConsistency(receivedParticles)) {
-										std::cout << getTimestamp() << ": Syncing particles..." << std::endl;
+							particles = receivedParticles;
+						}
+						particleVectorLock.unlock();
 
-										particles = receivedParticles;
-									}
-									particleVectorLock.unlock();
+						std::cout << "Particle count: " << particles.size() << std::endl;
+					}
 
-									std::cout << "Particle count: " << particles.size() << std::endl;
+					else if (jsonMessage["message_type"] == "Sprites") {
+						receivedSprites = deserializeSpriteMessage(jsonMessage);
+
+						std::unique_lock<std::mutex> spriteVectorLock(spritesMutex);
+						for (int i = 0; i < receivedSprites.size(); i++) {
+							for (int j = 0; j < sprites.size(); j++) {
+								if (receivedSprites[i].clientID == sprites[j].clientID && receivedSprites[i].clientID != spriteID) {
+									sprites[j].x = receivedSprites[i].x;
+									sprites[j].y = receivedSprites[i].y;
+									sprites[j].speed = receivedSprites[i].speed;
+
+									break;
 								}
-
-								else if (jsonMessage["message_type"] == "Sprites") {
-									receivedSprites = deserializeSpriteMessage(jsonMessage);
-
-									std::unique_lock<std::mutex> spriteVectorLock(spritesMutex);
-									for (int i = 0; i < receivedSprites.size(); i++) {
-										for (int j = 0; j < sprites.size(); j++) {
-											if (receivedSprites[i].clientID == sprites[j].clientID && receivedSprites[i].clientID != spriteID) {
-												sprites[j].x = receivedSprites[i].x;
-												sprites[j].y = receivedSprites[i].y;
-												sprites[j].speed = receivedSprites[i].speed;
-
-												break;
-											}
-										}
-									}
-									spriteVectorLock.unlock();
-								}
-								std::cout << "I go die." << std::endl;
 							}
-							else {
-								std::cerr << "Error reading data: " << error.message() << std::endl;
-							}
-						});
-
-					ioContext.run();
-
-					std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+						}
+						spriteVectorLock.unlock();
+					}
+					// recurse receiving
+					startAsyncReceive();
+					std::cout << "I go die." << std::endl;
 				}
-			}
-			catch (const std::exception& e) {
-				std::cerr << "Exception caught in startAsyncReceive: " << e.what() << std::endl;
-				// Handle the exception as needed, e.g., log it, notify the user, or attempt to recover
-			}
-			catch (...) {
-				std::cerr << "Unknown exception caught in startAsyncReceive." << std::endl;
-				// Handle unknown exceptions as needed
-			}
+				else {
+					std::cerr << "Error reading data: " << error.message() << std::endl;
+				}
 			});
+
+			ioContext.run();
 	}
 
 
@@ -662,7 +648,9 @@ int main(int argc, char* argv) {
 
 	networkClient.receiveSpriteID();
 	//networkClient.startAsyncReceive();
-	std::thread receiveThread = networkClient.startAsyncReceive();
+	std::thread receiveThread([&networkClient]{
+		networkClient.startAsyncReceive();
+	});
 	receiveThread.detach();
 
 	// Print out all the particles
