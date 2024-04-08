@@ -190,7 +190,6 @@ class Sprite {
 public:
 	float x, y;
 	float speed;
-	int clientID;
 	GLuint textureID;
 
 	Sprite(float x, float y, float speed, GLuint textureID) : x(x), y(y), speed(speed), textureID(textureID) {}
@@ -215,7 +214,7 @@ public:
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
-		j["clientID"] = clientID;
+		//dk where texture ID goes, but i assume here too in case
 		return j;
 	}
 
@@ -229,8 +228,6 @@ public:
 			textureID);
 	}
 };
-
-std::vector<Sprite> sprites;
 
 Sprite* explorerSprite = nullptr; // Global pointer to the explorer sprite
 
@@ -382,8 +379,6 @@ public:
 	boost::asio::ip::tcp::socket socket;
 
 	std::mutex particlesMutex;
-	std::mutex spritesMutex;
-
 	int spriteID;
 	int clientID;
 
@@ -452,7 +447,12 @@ public:
 		return message;
 	}
 
-	json deserializeAndParseMessage(const std::string& jsonString) {
+	std::vector<Particle> deserializeParticleMessage(const std::string& jsonString) {
+
+		std::vector<Particle> particleVector;
+
+		//std::cout << "jsonString input: " << jsonString << std::endl;
+
 		std::string message;
 
 		// Iterate over jsonString per character
@@ -466,15 +466,9 @@ public:
 		}
 		std::cout << "message: " << message << std::endl;
 
-		json jsonMessage = json::parse(message);
-
-		return jsonMessage;
-	}
-
-	std::vector<Particle> deserializeParticleMessage(const json jsonParticles) {
-		std::vector<Particle> particleVector;
-
 		try {
+			json jsonParticles = json::parse(message);
+
 			// Validate JSON structure
 			if (jsonParticles.empty()) {
 				std::cerr << "Error: Empty particles." << std::endl;
@@ -519,42 +513,7 @@ public:
 		std::cout << receivedmsg << "from recievespriteid func" << std::endl;
 		spriteID = std::stoi(receivedmsg);
 
-	std::vector<Sprite> deserializeSpriteMessage(const json jsonSprites) {
-		std::vector<Sprite> spriteVector;
-
-		try {
-			// Validate JSON structure
-			if (jsonSprites.empty()) {
-				std::cerr << "Error: Empty sprite data." << std::endl;
-				// Return empty vector on error
-				return spriteVector;
-			}
-
-			std::vector<json> xValues = jsonSprites["x"];
-			std::vector<json> yValues = jsonSprites["y"];
-			std::vector<json> speedValues = jsonSprites["speed"];
-			std::vector<json> clientIDValues = jsonSprites["clientID"];
-
-			// Ensure all arrays have the same size
-			if (xValues.size() == yValues.size() &&
-				xValues.size() == speedValues.size() &&
-				xValues.size() == clientIDValues.size()) {
-				for (size_t i = 0; i < clientIDValues.size(); ++i) {
-					spriteVector.emplace_back(xValues[i], yValues[i], speedValues[i], clientIDValues[i]);
-				}
-			}
-			else {
-				// Handle the case where the arrays are not the same size
-				std::cerr << "Error: JSON arrays are not the same size." << std::endl;
-			}
-		}
-		catch (const std::exception& e) {
-			std::cerr << "Error deserializing sprite message: " << e.what() << std::endl;
-		}
-
-		return spriteVector;
 	}
-    
 	void startAsyncReceive() {
 		std::thread receiveThread([this]() {
 			while (true) {
@@ -573,58 +532,28 @@ public:
 								//receivedMsg.erase(receivedMsg.find("Particles\n"), 10);
 							std::cout << "receivedMsg: " << receivedMsg << std::endl;
 
-							std::vector<Particle> receivedParticles;
-							std::vector<Sprite> receivedSprites;
-
 							// Deserialize the message to a vector of particles
-							json jsonMessage = deserializeAndParseMessage(receivedMsg);
+							std::vector<Particle> receivedParticles = deserializeParticleMessage(receivedMsg);
 
-							if (jsonMessage["message_type"] == "Particles") {
-								receivedParticles = deserializeParticleMessage(jsonMessage);
+							// Mutex lock the particles when accessing and modifying
+							std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
+							if (!checkParticlesConsistency(receivedParticles)) {
+								std::cout << getTimestamp() << ": Syncing particles..." << std::endl;
 
-								// Mutex lock the particles when accessing and modifying
-								std::unique_lock<std::mutex> particleVectorLock(particlesMutex);
-								if (!checkParticlesConsistency(receivedParticles)) {
-									std::cout << getTimestamp() << ": Syncing particles..." << std::endl;
-
-									particles = receivedParticles;
-								}
-								particleVectorLock.unlock();
-
-								std::cout << "Particle count: " << particles.size() << std::endl;
+								particles = receivedParticles;
 							}
+							particleVectorLock.unlock();
 
-							else if (jsonMessage["message_type"] == "Sprites") {
-								receivedSprites = deserializeSpriteMessage(jsonMessage);
-
-								// Mutex lock the particles when accessing and modifying
-								std::unique_lock<std::mutex> spriteVectorLock(spritesMutex);
-								for (int i = 0; i < receivedSprites.size(); i++) {
-									for (int j = 0; j < sprites.size(); j++) {
-										if (receivedSprites[i].clientID == sprites[j].clientID) {
-											sprites[j].x = receivedSprites[i].x;
-											sprites[j].y = receivedSprites[i].y;
-											sprites[j].speed = receivedSprites[i].speed;
-
-											break;
-										}
-									}
-
-								}
-								spriteVectorLock.unlock();
+							std::cout << "Particle count: " << particles.size() << std::endl;
+							//}
+							// This else block will handle receiving a message with "Sprite\n" at the start
+							//else
+							if (receivedMsg.find("ID\n") != std::string::npos) {
+								// get the id from the msg
+								receivedMsg.erase(0, 3);
+								clientID = stoi(receivedMsg);
 							}
 						}
-
-
-						////}
-						//// This else block will handle receiving a message with "Sprite\n" at the start
-						////else
-						//if (receivedMsg.find("ID\n") != std::string::npos) {
-						//	// get the id from the msg
-						//	receivedMsg.erase(0, 3);
-						//	clientID = stoi(receivedMsg);
-						//}
-
 						else {
 							std::cerr << "Error waiting for data: " << error.message() << std::endl;
 						}
