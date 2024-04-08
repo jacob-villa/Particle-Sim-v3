@@ -501,6 +501,7 @@ void sendParticles() {
 				}
 			);
 		}
+		std::cout << "dasdasdasdadasdasdsa" << std::endl;
 
 	}
 	catch (std::exception& e) {
@@ -529,6 +530,30 @@ void sendSprites() {
 	}
 }	
 
+	void runPeriodicSend() {
+		// Set the timer to expire after 10 seconds
+		boost::asio::steady_timer timer(io_context);
+		timer.expires_after(std::chrono::seconds(10));
+
+		// Define the handler for the timer's expiration
+		timer.async_wait([](const boost::system::error_code& error) {
+			if (!error) {
+				std::cout << "About to periodic send.." << std::endl;
+				// Send particles to clients
+				sendParticles();
+				// Send sprites to clients
+				//sendSprites();
+
+				// Reschedule the timer
+				runPeriodicSend();
+			}
+		});
+
+		// Run the io_context to start the timer
+		//io_context.run();
+	}
+
+/*
 void runPeriodicSend() {
 	//boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
@@ -560,7 +585,7 @@ void runPeriodicSend() {
 	// Run the io_context to start the timer
 	io_context.run();
 }
-
+*/
 std::mutex spriteVectorMutex;
 
 void handleClient(int pos) {
