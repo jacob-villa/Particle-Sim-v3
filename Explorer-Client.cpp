@@ -188,12 +188,12 @@ std::vector<Particle> particles;
 
 class Sprite {
 public:
-	int clientID;
 	float x, y;
 	float speed;
+	int clientID;
 	GLuint textureID;
 
-	Sprite(int clientID, float x, float y, float speed, GLuint textureID) : clientID(clientID), x(x), y(y), speed(speed), textureID(textureID) {}
+	Sprite(float x, float y, float speed, GLuint textureID) : x(x), y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -222,16 +222,11 @@ public:
 	static Sprite fromJSON(const json& j) {
 		GLuint textureID;
 
-		return Sprite(j["clientID"].get<int>(),
+		return Sprite(
 			j["x"].get<float>(),
 			j["y"].get<float>(),
 			j["speed"].get<float>(),
 			textureID);
-	}
-
-	void setPos(float newX, float newY) {
-		x = newX;
-		y = newY;
 	}
 };
 
@@ -384,26 +379,24 @@ void updateParticlesFromServer(std::vector<Particle>& receivedParticles) {
 class NetworkClient {
 public:
 	boost::asio::io_context ioContext;
-	//boost::asio::ip::tcp::socket socket;
-	boost::shared_ptr<tcp::socket> socketPtr;
+	boost::asio::ip::tcp::socket socket;
 
 	std::mutex particlesMutex;
 	std::mutex spritesMutex;
 
 	int spriteID;
+	int clientID;
 
 	NetworkClient(const std::string& serverAddress, const std::string& serverPort)
-		: ioContext(), socketPtr(new tcp::socket(ioContext)) {
+		: ioContext(), socket(ioContext) {
 		boost::asio::ip::tcp::resolver resolver(ioContext);
 		boost::asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(serverAddress, serverPort);
-		//boost::shared_ptr<tcp::socket> socketPtr(new tcp::socket(ioContext));
-		boost::asio::connect(*socketPtr, endpoints);
+		boost::asio::connect(socket, endpoints);
 	}
 
 	void sendPosition(float x, float y) {
 		std::string message = std::to_string(spriteID) + " " + std::to_string(x) + " " + std::to_string(y) + "\n";
-		boost::asio::write(*socketPtr, boost::asio::buffer(message));
-		//std::cout << "Sent position: " << message << std::endl;
+		boost::asio::write(socket, boost::asio::buffer(message));
 	}
 
 	void sendSpriteData(const Sprite& sprite) {
@@ -412,10 +405,10 @@ public:
 		std::string serializedData = spriteData.dump();
 
 		// Send the serialized data to the server
-		boost::asio::write(*socketPtr, boost::asio::buffer(serializedData));
+		boost::asio::write(socket, boost::asio::buffer(serializedData));
 	}
 
-	std::string receiveMessage(boost::shared_ptr<tcp::socket> socketPtr) {
+	std::string receiveMessage(boost::asio::ip::tcp::socket& socket) {
 		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
 		std::array<char, bufferSize> buffer;
@@ -426,7 +419,7 @@ public:
 			boost::system::error_code error;
 
 			while (true) {
-				size_t length = (*socketPtr).read_some(boost::asio::buffer(buffer), error);
+				size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 				if (error) {
 					throw boost::system::system_error(error);
 				}
@@ -520,6 +513,11 @@ public:
 
 		return particleVector;
 	}
+	void recieveSpriteId() {
+		std::cout << "went to recievespriteid func" << std::endl;
+		std::string receivedmsg = receiveMessage(socket);
+		std::cout << receivedmsg << "from recievespriteid func" << std::endl;
+		spriteID = std::stoi(receivedmsg);
 
 	std::vector<Sprite> deserializeSpriteMessage(const json jsonSprites) {
 		std::vector<Sprite> spriteVector;
@@ -542,7 +540,7 @@ public:
 				xValues.size() == speedValues.size() &&
 				xValues.size() == clientIDValues.size()) {
 				for (size_t i = 0; i < clientIDValues.size(); ++i) {
-					spriteVector.emplace_back(clientIDValues[i], xValues[i], yValues[i], speedValues[i], clientIDValues[i]);
+					spriteVector.emplace_back(xValues[i], yValues[i], speedValues[i], clientIDValues[i]);
 				}
 			}
 			else {
@@ -556,22 +554,23 @@ public:
 
 		return spriteVector;
 	}
-
-	void receiveSpriteID() {
-		std::string receivedmsg = receiveMessage(socketPtr);
-		spriteID = std::stoi(receivedmsg);
-		std::cout << "received Sprite ID from server" << std::endl;
-	}
-
+    
 	void startAsyncReceive() {
 		std::thread receiveThread([this]() {
 			while (true) {
 				// Wait for particle data to be available on the socket
-				(*socketPtr).async_wait(boost::asio::ip::tcp::socket::wait_read,
+				socket.async_wait(boost::asio::ip::tcp::socket::wait_read,
 					[this](const boost::system::error_code& error) {
 						if (!error) {
 							// Data is available, proceed to read the message
-							std::string receivedMsg = receiveMessage(socketPtr);
+							std::string receivedMsg = receiveMessage(socket);
+
+							//std::cout << "Received msg: " << receivedMsg << std::endl;
+
+							// Message for particle will contain "Particles\n" at the head
+							//if (receivedMsg.find("Particles\n") != std::string::npos) {
+								// Remove the "Particles\n" string from the message
+								//receivedMsg.erase(receivedMsg.find("Particles\n"), 10);
 							std::cout << "receivedMsg: " << receivedMsg << std::endl;
 
 							std::vector<Particle> receivedParticles;
@@ -602,7 +601,7 @@ public:
 								std::unique_lock<std::mutex> spriteVectorLock(spritesMutex);
 								for (int i = 0; i < receivedSprites.size(); i++) {
 									for (int j = 0; j < sprites.size(); j++) {
-										if (receivedSprites[i].clientID == sprites[j].clientID && receivedSprites[i].clientID != spriteID) {
+										if (receivedSprites[i].clientID == sprites[j].clientID) {
 											sprites[j].x = receivedSprites[i].x;
 											sprites[j].y = receivedSprites[i].y;
 											sprites[j].speed = receivedSprites[i].speed;
@@ -615,6 +614,17 @@ public:
 								spriteVectorLock.unlock();
 							}
 						}
+
+
+						////}
+						//// This else block will handle receiving a message with "Sprite\n" at the start
+						////else
+						//if (receivedMsg.find("ID\n") != std::string::npos) {
+						//	// get the id from the msg
+						//	receivedMsg.erase(0, 3);
+						//	clientID = stoi(receivedMsg);
+						//}
+
 						else {
 							std::cerr << "Error waiting for data: " << error.message() << std::endl;
 						}
@@ -630,6 +640,29 @@ public:
 		receiveThread.detach();
 	}
 
+	/*
+	std::vector<Sprite> deserializeSpriteMessage(const std::string& jsonString) {
+
+		std::vector<Particle> receivedSprites;
+
+		json j = json::parse(jsonString);
+		for (const auto& particleJson : j) {
+			receivedSprites.push_back(Sprite::fromJSON(particleJson));
+		}
+
+		return receivedSprites;
+	}
+
+	void receiveSpritesAsync(boost::asio::ip::tcp::socket& socket) {
+		while (true) {
+			std::string receivedSpritesMsg = receiveMessage(socket);
+			std::vector<Sprite> receivedSprites = deserializeSpriteMessage(receivedSpritesMsg);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+	}
+	*/
+
+
 private:
 	// Moved ioContext and socket to public
 };
@@ -637,7 +670,7 @@ private:
 int main(int argc, char* argv) {
 	NetworkClient networkClient("127.0.0.1", "4160");
 
-	networkClient.receiveSpriteID();
+	networkClient.recieveSpriteId();
 	networkClient.startAsyncReceive();
 
 	// Print out all the particles
@@ -717,7 +750,7 @@ int main(int argc, char* argv) {
 	GLuint explorerTexture;
 	isSpriteImageAvailable = LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
 
-	explorerSprite = new Sprite(networkClient.spriteID, 640, 360, 100.0f, explorerTexture); // change sprite speed and initial position here
+	explorerSprite = new Sprite(640, 360, 100.0f, explorerTexture); // change sprite speed and initial position here
 	char imagePath[256] = "";
 
 	std::string loadImageMessage = "";
@@ -971,6 +1004,8 @@ int main(int argc, char* argv) {
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 
 			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+
+			//networkClient.sendSpriteData(*explorerSprite);
 		}
 
 		ImGui::PopStyleColor(4);

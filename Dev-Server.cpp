@@ -50,41 +50,6 @@ float zoomFactor = 1.0f;
 
 ImVec2 focusPoint = ImVec2(640, 360);
 
-class Semaphore {
-private:
-	std::mutex mutex_;
-	std::condition_variable condition_;
-	size_t count_;
-
-public:
-	Semaphore(size_t count = 0) : count_(count) {}
-
-	void notify() {
-		std::unique_lock<std::mutex> lock(mutex_);
-		++count_;
-		condition_.notify_one();
-	}
-
-	void wait() {
-		std::unique_lock<std::mutex> lock(mutex_);
-		while (count_ == 0) {
-			condition_.wait(lock);
-		}
-		--count_;
-	}
-
-	bool try_wait() {
-		std::unique_lock<std::mutex> lock(mutex_);
-		if (count_ > 0) {
-			--count_;
-			return true;
-		}
-		return false;
-	}
-};
-
-Semaphore clientSemaphore = Semaphore(0);
-
 std::string getTimestamp() {
 	auto now = std::chrono::system_clock::now();
 	std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
@@ -226,7 +191,7 @@ public:
 	float speed;
 	GLuint textureID;
 
-	Sprite(int clientID, float x, float y, float speed, GLuint textureID) :clientID(clientID), x(x),y(y), speed(speed), textureID(textureID) {}
+	Sprite(int id, float x, float y, float speed, GLuint textureID) :id(id), x(x),y(y), speed(speed), textureID(textureID) {}
 
 	void Move(float dx, float dy) {
 		x += dx;
@@ -257,7 +222,7 @@ public:
 	static Sprite fromJSON(const json& j) {
 		GLuint textureID;
 
-		return Sprite(j["clientID"].get<int>(),
+		return Sprite(j["id"].get<int>(),
 			j["x"].get<float>(),
 			j["y"].get<float>(),
 			j["speed"].get<float>(),
@@ -422,20 +387,17 @@ std::string serializeSprites(const std::vector<Sprite>& sprites) {
 	std::vector<int> xValues;
 	std::vector<int> yValues;
 	std::vector<int> speedValues;
-	std::vector<int> clientIDValues;
 
 	for (const auto& sprite : sprites) {
 		xValues.push_back(sprite.x);
 		yValues.push_back(sprite.y);
 		speedValues.push_back(sprite.speed);
-		clientIDValues.push_back(sprite.clientID);
 	}
 
 	json j;
 	j["x"] = xValues;
 	j["y"] = yValues;
 	j["speed"] = speedValues;
-	j["clientID"] = clientIDValues;
 	j["message_type"] = "Sprites";
 
 	std::string serializedSprites = j.dump();
@@ -447,6 +409,7 @@ std::string serializeSprites(const std::vector<Sprite>& sprites) {
 
 }
 
+// Returns the message to be sent to the clients
 std::string serializeParticles(const std::vector<Particle>& particles) {
 	std::vector<int> xValues;
 	std::vector<int> yValues;
@@ -469,19 +432,21 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 
 	std::string serializedParticles = j.dump();
 
+	// Inserting identifier
+	//serializedParticles.insert(0, "Particles\n");
+
 	// Insert | at end of message
 	serializedParticles.push_back('|');
 
 	return serializedParticles;
 }
 
-void sendParticles(std::vector<boost::shared_ptr<tcp::socket>> clients) {
-	std::cout << "i'm in send particles" << std::endl;
+void sendParticles(std::vector<tcp::socket>& clients) {
 	try {
 		std::string particleMessage = serializeParticles(particles);
 
-		for (auto& clientPtr : clients) {
-			boost::asio::write(*clientPtr, boost::asio::buffer(particleMessage));
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(particleMessage));
 		}
 
 	}
@@ -490,19 +455,12 @@ void sendParticles(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 	}
 }
 
-void sendSprites(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void sendSprites(std::vector<tcp::socket>& clients) {
 	try {
-		// Wait for all clients to send their sprite positions 
-		// before broadcasting an update
-		/*for (int i = 0; i < clientSprites.size(); i++) {
-			std::cout << "I'm in the semaphore waiting, waiting for the " << i + 1 << "th client out of " << clientSprites.size() << std::endl;
-			clientSemaphore.wait();
-		}*/
-
 		std::string spriteMessage = serializeSprites(clientSprites);
 
-		for (auto& clientPtr : clients) {
-			boost::asio::write(*clientPtr, boost::asio::buffer(spriteMessage));
+		for (auto& client : clients) {
+			boost::asio::write(client, boost::asio::buffer(spriteMessage));
 		}
 
 	}
@@ -511,7 +469,7 @@ void sendSprites(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 	}
 }	
 
-void runPeriodicSend(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
 
@@ -523,11 +481,10 @@ void runPeriodicSend(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 		timer.expires_after(std::chrono::seconds(10));
 		timer.async_wait([&](const boost::system::error_code& error) {
 			if (!error) {
-				std::cout << "about to periodic send.." << std::endl;
 				// Send particles to clients
-				sendParticles(clients);
+				sendParticles(std::ref(clients));
 				// Send sprites to clients
-				sendSprites(clients);
+				sendSprites(std::ref(clients));
 
 				// Reschedule the timer
 				periodicTask();
@@ -542,9 +499,7 @@ void runPeriodicSend(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 	io_context.run();
 }
 
-std::mutex spriteVectorMutex;
-
-void handleClient(boost::shared_ptr<tcp::socket> socket) {
+void handleClient(boost::asio::ip::tcp::socket socket) {
 	// Will have to change buffer size to accommodate message length (from JSON)
 	constexpr size_t bufferSize = 1024;
 	std::array<char, bufferSize> buffer;
@@ -555,7 +510,7 @@ void handleClient(boost::shared_ptr<tcp::socket> socket) {
 		boost::system::error_code error;
 
 		while (true) {
-			size_t length = (*socket).read_some(boost::asio::buffer(buffer), error);
+			size_t length = socket.read_some(boost::asio::buffer(buffer), error);
 			if (error) {
 				throw boost::system::system_error(error);
 			}
@@ -585,21 +540,9 @@ void handleClient(boost::shared_ptr<tcp::socket> socket) {
 				else {
 					std::cerr << "Error: Could not parse the ID." << std::endl;
 				}
-				//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
-
-				//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
-				/*clientSprites[id - 1].x = x;
-				clientSprites[id - 1].y = y;*/
-				for (int i = 0; i < clientSprites.size(); i++) {
-					if (clientSprites[i].clientID == id) {
-						clientSprites[i].x = x;
-						clientSprites[i].y = y;
-						break;
-					}	
-				}
-				clientSemaphore.notify();
-				//spriteVectorLock.unlock();
-				
+				std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
+				clientSprites[id-1].x = x;
+				clientSprites[id-1].y = y;
 			}
 			// The \0 appended approach to string reading:
 			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
@@ -624,9 +567,9 @@ void handleClient(boost::shared_ptr<tcp::socket> socket) {
 
 }
 
-std::mutex clientCtrMutex;
+std::mutex mtx;
 
-void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void runServer(std::vector<tcp::socket>& clients) {
 	try {
 		std::cout << "Server listening...on port: " << port << std::endl;
 
@@ -636,15 +579,15 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 		// Use a loop to continuously accept new clients
 		while (true) {
 
-			boost::shared_ptr<tcp::socket> socketPtr(new tcp::socket(io_context));
-			acceptor.accept(*socketPtr);
+			tcp::socket socket(io_context);
+			acceptor.accept(socket);
 
 			std::cout << "New client connected." << std::endl;
 			//unique mutex lock
-			std::unique_lock<std::mutex> clientCtrLock(clientCtrMutex);
-			clients.push_back(socketPtr);
+			std::unique_lock<std::mutex> lock(mtx);
+			clients.push_back(std::move(socket));
 			clientCtr++;
-			clientCtrLock.unlock();
+			lock.unlock();
 
 			GLuint explorerTexture;
 			LoadTexture("squareman.jpg", explorerTexture); //change sprite image here 
@@ -656,16 +599,13 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 			std::string IDMsg = "ID\n" + std::to_string(clientCtr);
 			//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
 			std::string id_message = std::to_string(clientCtr);
-			boost::asio::write(*(clients[clientCtr - 1]), boost::asio::buffer(id_message));
+			boost::asio::write(clients[clientCtr - 1], boost::asio::buffer(id_message));
 			sendParticles(clients);
-			sendSprites(clients);
 
-			// Create a copy of the client socket object
-			/*tcp::socket clientCopy(io_context);
-			clientCopy = clients.back();*/
-
-			std::thread clientThread(handleClient, clients.back());
+			std::thread clientThread(handleClient, std::move(clients.back()));
 			clientThread.detach();
+			//clientThreads.emplace_back(handleClient, std::ref(clients[clientCtr - 1]));
+			//clientThreads.back().detach();
 		}
 	}
 	catch (std::exception& e) {
@@ -676,20 +616,16 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 
 int main(int argc, char *argv) {
 
-	std::vector<boost::shared_ptr<tcp::socket>> clients;
+	std::vector<tcp::socket> clients;
 	std::vector<std::thread> clientThreads;
 
 	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
 	std::thread serverThread(runServer, std::ref(clients));
 	serverThread.detach();
 
-	// Start the periodic sending of particles in a separate thread
+	// Start the periodic sending in a separate thread
 	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
 	periodicSendThread.detach();
-
-	// Start thread for sending sprites
-	std::thread sendSpritesThread(sendSprites, std::ref(clients));
-	sendSpritesThread.detach();
 
 
 	if (!glfwInit()) {
