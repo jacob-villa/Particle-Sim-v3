@@ -402,8 +402,21 @@ public:
 
 	void sendPosition(float x, float y) {
 		std::string message = std::to_string(spriteID) + " " + std::to_string(x) + " " + std::to_string(y) + "\n";
-		boost::asio::write(*socketPtr, boost::asio::buffer(message));
-		//std::cout << "Sent position: " << message << std::endl;
+		boost::asio::async_write(*socketPtr, boost::asio::buffer(message),
+			[](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+				std::cout << "before error checking" << std::endl;
+				if (!error) {
+					// Write completed successfully
+					std::cout << "pos sent to server" << std::endl;
+				}
+				else {
+					// Handle error
+					std::cerr << "Error in sendPosition: " << error.message() << std::endl;
+				}
+			}
+		);
+		/*boost::asio::write(*socketPtr, boost::asio::buffer(message));
+		std::cout << "Sent position: " << message << std::endl;*/
 	}
 
 	void sendSpriteData(const Sprite& sprite) {

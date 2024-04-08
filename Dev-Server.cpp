@@ -30,6 +30,8 @@ enum Mode {
 	EXPLORER
 };
 
+static std::vector<boost::shared_ptr<tcp::socket>> clients;
+
 static GLFWwindow* window = nullptr;
 float PI = 3.14159265359;
 
@@ -475,15 +477,17 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	return serializedParticles;
 }
 
-void sendParticles(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void sendParticles() {
 	std::cout << "I'm in sendParticles" << std::endl;
 	try {
 		std::string particleMessage = serializeParticles(particles);
+		std::cout << clients.size() << std::endl;
 
 		for (auto& clientPtr : clients) {
 			// Asynchronously write the particle message to each client socket
 			boost::asio::async_write(*clientPtr, boost::asio::buffer(particleMessage),
 				[clientPtr](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+					std::cout << "before error checking" << std::endl;
 					if (!error) {
 						// Write completed successfully
 						std::cout << "Particle message sent to client" << std::endl;
@@ -501,7 +505,7 @@ void sendParticles(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 	}
 }
 
-void sendSprites(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void sendSprites() {
 	try {
 		// Wait for all clients to send their sprite positions 
 		// before broadcasting an update
@@ -522,7 +526,7 @@ void sendSprites(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 	}
 }	
 
-void runPeriodicSend(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void runPeriodicSend() {
 	boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
 
@@ -536,9 +540,9 @@ void runPeriodicSend(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 			if (!error) {
 				std::cout << "about to periodic send.." << std::endl;
 				// Send particles to clients
-				sendParticles(clients);
+				sendParticles();
 				// Send sprites to clients
-				sendSprites(clients);
+				sendSprites();
 
 				// Reschedule the timer
 				periodicTask();
@@ -637,7 +641,7 @@ void handleClient(boost::shared_ptr<tcp::socket> socket) {
 
 std::mutex clientCtrMutex;
 
-void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
+void runServer() {
 	try {
 		std::cout << "Server listening...on port: " << port << std::endl;
 
@@ -687,20 +691,18 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 
 
 int main(int argc, char *argv) {
-
-	std::vector<boost::shared_ptr<tcp::socket>> clients;
 	std::vector<std::thread> clientThreads;
 
 	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
-	std::thread serverThread(runServer, std::ref(clients));
+	std::thread serverThread(runServer);
 	serverThread.detach();
 
 	// Start the periodic sending of particles in a separate thread
-	std::thread periodicSendThread(runPeriodicSend, std::ref(clients));
+	std::thread periodicSendThread(runPeriodicSend);
 	periodicSendThread.detach();
 
 	// Start thread for sending sprites
-	std::thread sendSpritesThread(sendSprites, std::ref(clients));
+	std::thread sendSpritesThread(sendSprites);
 	sendSpritesThread.detach();
 
 
@@ -861,7 +863,7 @@ int main(int argc, char *argv) {
 					// std::string serializedParticles = j.dump();
 					// sendParticlestoClient(j);
 					particles.emplace_back(newParticleX, newParticleY, newParticleAngle, newParticleVelocity);
-					sendParticles(std::ref(clients));
+					sendParticles();
 				}
 				else {
 					showErrorPopup = true;
@@ -871,13 +873,13 @@ int main(int argc, char *argv) {
 			ImGui::SameLine();
 			if (ImGui::Button("Spawn Random Particle")) {
 				SpawnRandomParticle();
-				sendParticles(std::ref(clients));
+				sendParticles();
 			}
 			ImGui::SameLine();
 			
 			if (ImGui::Button("Reset Particles")) {
 				particles.clear();
-				sendParticles(std::ref(clients));
+				sendParticles();
 			}
 			if (showErrorPopup) {
 				ImGui::OpenPopup("Invalid Input");
@@ -964,7 +966,7 @@ int main(int argc, char *argv) {
 					}
 					//std::cout << "Particle position: (" << x << ", " << y << ")" << std::endl;
 				}
-				sendParticles(std::ref(clients));
+				sendParticles();
 			}
 		}
 		else {
