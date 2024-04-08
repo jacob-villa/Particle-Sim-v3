@@ -23,6 +23,8 @@
 using boost::asio::ip::tcp;
 using json = nlohmann::json;
 
+static boost::asio::io_context io_context;
+
 short port = 69696;
 
 enum Mode {
@@ -484,9 +486,9 @@ void sendParticles() {
 		std::cout << clients.size() << std::endl;
 
 		for (auto& clientPtr : clients) {
-			// Asynchronously write the particle message to each client socket
+			boost::shared_ptr<boost::asio::ip::tcp::socket> sharedClientPtr = clientPtr;
 			boost::asio::async_write(*clientPtr, boost::asio::buffer(particleMessage),
-				[clientPtr](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+				[sharedClientPtr](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
 					std::cout << "before error checking" << std::endl;
 					if (!error) {
 						// Write completed successfully
@@ -499,6 +501,7 @@ void sendParticles() {
 				}
 			);
 		}
+
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
@@ -527,7 +530,7 @@ void sendSprites() {
 }	
 
 void runPeriodicSend() {
-	boost::asio::io_context io_context;
+	//boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
 
 	// Define function for periodic sending
@@ -542,7 +545,7 @@ void runPeriodicSend() {
 				// Send particles to clients
 				sendParticles();
 				// Send sprites to clients
-				sendSprites();
+				//sendSprites();
 
 				// Reschedule the timer
 				periodicTask();
@@ -564,58 +567,62 @@ void handleClient(int pos) {
 	constexpr size_t bufferSize = 1024;
 	std::array<char, bufferSize> buffer;
 
-	std::string message;
-
-	try {
-		boost::system::error_code error;
-
-		while (true) {
-			size_t length = clients[pos]->read_some(boost::asio::buffer(buffer), error);
+	clients[pos]->async_read_some(boost::asio::buffer(buffer),
+		[&buffer, &pos](const boost::system::error_code& error, std::size_t length) {
 			if (error) {
 				throw boost::system::system_error(error);
+				return;
 			}
-			else {
-				message = std::string(buffer.data(), length);
-				//std::cout << message << std::endl;
-				std::istringstream iss(message);
-				int id = 0;
-				float x, y = 0.0f;
+			std::string message = std::string(buffer.data(), length);
+			//std::cout << message << std::endl;
+			std::istringstream iss(message);
+			int id = 0;
+			float x = 0.0f;
+			float y = 0.0f;
 
-				// Attempt to extract the first float
-				if (iss >> id) {
-					// Read the second word (float1)
-					if (iss >> x) {
-						// Read the third word (float2)
-						if (iss >> y) {
-							//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
-						}
-						else {
-							std::cerr << "Error: Could not parse the third float." << std::endl;
-						}
+			// Attempt to extract the first float
+			if (iss >> id) {
+				// Read the second word (float1)
+				if (iss >> x) {
+					// Read the third word (float2)
+					if (iss >> y) {
+						//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
 					}
 					else {
-						std::cerr << "Error: Could not parse the second float." << std::endl;
+						std::cerr << "Error: Could not parse the third float." << std::endl;
 					}
 				}
 				else {
-					std::cerr << "Error: Could not parse the ID." << std::endl;
+					std::cerr << "Error: Could not parse the second float." << std::endl;
 				}
-				//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
-
-				//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
-				/*clientSprites[id - 1].x = x;
-				clientSprites[id - 1].y = y;*/
-				for (int i = 0; i < clientSprites.size(); i++) {
-					if (clientSprites[i].clientID == id) {
-						clientSprites[i].x = x;
-						clientSprites[i].y = y;
-						break;
-					}	
-				}
-				//clientSemaphore.notify();
-				//spriteVectorLock.unlock();
-				
 			}
+			else {
+				std::cerr << "Error: Could not parse the ID." << std::endl;
+			}
+			//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
+
+			//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
+			/*clientSprites[id - 1].x = x;
+			clientSprites[id - 1].y = y;*/
+			for (int i = 0; i < clientSprites.size(); i++) {
+				if (clientSprites[i].clientID == id) {
+					clientSprites[i].x = x;
+					clientSprites[i].y = y;
+					break;
+				}
+			}
+			//clientSemaphore.notify();
+			//spriteVectorLock.unlock();
+
+			message.clear();
+			handleClient(pos);
+
+		});
+
+	try {
+		
+
+			io_context.run();
 			// The \0 appended approach to string reading:
 			//size_t length = socket.read_some(boost::asio::buffer(buffer, 1), error);
 
@@ -630,8 +637,6 @@ void handleClient(int pos) {
 			//else {
 			//	message.push_back(buffer[0]);
 			//}
-		}
-
 	}
 	catch (const std::exception& e) {
 		std::cerr << "Error receiving message: " << e.what() << std::endl;
@@ -645,8 +650,6 @@ std::mutex clientCtrMutex;
 void runServer() {
 	try {
 		std::cout << "Server listening...on port: " << port << std::endl;
-
-		boost::asio::io_context io_context;
 		tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
 
 		// Use a loop to continuously accept new clients
@@ -693,7 +696,6 @@ void runServer() {
 
 int main(int argc, char *argv) {
 	std::vector<std::thread> clientThreads;
-
 	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
 	std::thread serverThread(runServer);
 	serverThread.detach();
@@ -703,8 +705,8 @@ int main(int argc, char *argv) {
 	periodicSendThread.detach();
 
 	// Start thread for sending sprites
-	std::thread sendSpritesThread(sendSprites);
-	sendSpritesThread.detach();
+	//std::thread sendSpritesThread(sendSprites);
+	//sendSpritesThread.detach();
 
 
 	if (!glfwInit()) {
