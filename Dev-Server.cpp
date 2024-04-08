@@ -532,6 +532,7 @@ void sendSprites() {
 void runPeriodicSend() {
 	//boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
+	boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work = boost::asio::make_work_guard(io_context);
 
 	// Define function for periodic sending
 	using PeriodicTask = std::function<void()>;
@@ -565,62 +566,63 @@ std::mutex spriteVectorMutex;
 void handleClient(int pos) {
 	// Will have to change buffer size to accommodate message length (from JSON)
 	constexpr size_t bufferSize = 1024;
-	std::array<char, bufferSize> buffer;
-
-	clients[pos]->async_read_some(boost::asio::buffer(buffer),
-		[&buffer, &pos](const boost::system::error_code& error, std::size_t length) {
-			if (error) {
-				throw boost::system::system_error(error);
-				return;
-			}
-			std::string message = std::string(buffer.data(), length);
-			//std::cout << message << std::endl;
-			std::istringstream iss(message);
-			int id = 0;
-			float x = 0.0f;
-			float y = 0.0f;
-
-			// Attempt to extract the first float
-			if (iss >> id) {
-				// Read the second word (float1)
-				if (iss >> x) {
-					// Read the third word (float2)
-					if (iss >> y) {
-						//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
-					}
-					else {
-						std::cerr << "Error: Could not parse the third float." << std::endl;
-					}
-				}
-				else {
-					std::cerr << "Error: Could not parse the second float." << std::endl;
-				}
-			}
-			else {
-				std::cerr << "Error: Could not parse the ID." << std::endl;
-			}
-			//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
-
-			//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
-			/*clientSprites[id - 1].x = x;
-			clientSprites[id - 1].y = y;*/
-			for (int i = 0; i < clientSprites.size(); i++) {
-				if (clientSprites[i].clientID == id) {
-					clientSprites[i].x = x;
-					clientSprites[i].y = y;
-					break;
-				}
-			}
-			//clientSemaphore.notify();
-			//spriteVectorLock.unlock();
-
-			message.clear();
-			handleClient(pos);
-
-		});
+	auto buffer = std::make_shared<std::array<char, bufferSize>>();
 
 	try {
-		
+		boost::shared_ptr<boost::asio::ip::tcp::socket> sharedClientPtr = clients[pos];
+
+		sharedClientPtr->async_read_some(boost::asio::buffer(*buffer),
+			[&buffer, &pos](const boost::system::error_code& error, std::size_t length) {
+				if (error) {
+					throw boost::system::system_error(error);
+				}
+				else {
+					std::string message = std::string(buffer->data(), length);
+					//std::cout << message << std::endl;
+					std::istringstream iss(message);
+					int id = 0;
+					float x = 0.0f;
+					float y = 0.0f;
+
+					// Attempt to extract the first float
+					if (iss >> id) {
+						// Read the second word (float1)
+						if (iss >> x) {
+							// Read the third word (float2)
+							if (iss >> y) {
+								//std::cout << "ID: " << id << ", Float1: " << x << ", Float2: " << y << std::endl;
+							}
+							else {
+								std::cerr << "Error: Could not parse the third float." << std::endl;
+							}
+						}
+						else {
+							std::cerr << "Error: Could not parse the second float." << std::endl;
+						}
+					}
+					else {
+						std::cerr << "Error: Could not parse the ID." << std::endl;
+					}
+					//std::cout << "Received sprite position data from client " << id << ": (" << x << ", " << y << ")" << std::endl;
+
+					//std::unique_lock<std::mutex> spriteVectorLock(spriteVectorMutex);
+					/*clientSprites[id - 1].x = x;
+					clientSprites[id - 1].y = y;*/
+					for (int i = 0; i < clientSprites.size(); i++) {
+						if (clientSprites[i].clientID == id) {
+							clientSprites[i].x = x;
+							clientSprites[i].y = y;
+							break;
+						}	
+					}
+					//clientSemaphore.notify();
+					//spriteVectorLock.unlock();
+					
+					message.clear();
+					handleClient(pos);
+				}
+
+			});
 
 			io_context.run();
 			// The \0 appended approach to string reading:
@@ -686,6 +688,8 @@ void runServer() {
 
 			std::thread clientThread(handleClient, clients.size() - 1);
 			clientThread.detach();
+
+			
 		}
 	}
 	catch (std::exception& e) {
