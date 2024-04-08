@@ -469,7 +469,7 @@ public:
 	std::string receiveMessage(boost::shared_ptr<tcp::socket> socketPtr) {
 		// Will have to change buffer size to accommodate message length (from JSON)
 		constexpr size_t bufferSize = 1024;
-		std::array<char, bufferSize> buffer;
+		auto buffer = std::make_shared<std::array<char, bufferSize>>();
 
 		std::string message;
 
@@ -477,12 +477,13 @@ public:
 			boost::system::error_code error;
 
 			while (true) {
-				size_t length = (*socketPtr).read_some(boost::asio::buffer(buffer), error);
+				boost::shared_ptr<boost::asio::ip::tcp::socket> sharedSocketPtr = socketPtr;
+				size_t length = sharedSocketPtr->read_some(boost::asio::buffer(*buffer), error);
 				if (error) {
 					throw boost::system::system_error(error);
 				}
 				else {
-					message = std::string(buffer.data(), length);
+					message = std::string(buffer->data(), length);
 					break;
 					//std::cout << message << std::endl;
 				}
@@ -618,12 +619,13 @@ public:
 
 	void startAsyncReceive() {
 		constexpr size_t bufferSize = 1024;
-		std::array<char, bufferSize> buffer;
-		
-		(*socketPtr).async_read_some(boost::asio::buffer(buffer),
+		auto buffer = std::make_shared<std::array<char, bufferSize>>();
+
+		boost::shared_ptr<boost::asio::ip::tcp::socket> sharedSocketPtr = socketPtr;
+		sharedSocketPtr->async_read_some(boost::asio::buffer(*buffer),
 			[this, &buffer](const boost::system::error_code& error, std::size_t length) {
 				if (!error) {
-					std::string receivedMsg(buffer.data(), length);
+					std::string receivedMsg(buffer->data(), length);
 					std::cout << "receivedMsg: " << receivedMsg << std::endl;
 
 					std::vector<Particle> receivedParticles;
