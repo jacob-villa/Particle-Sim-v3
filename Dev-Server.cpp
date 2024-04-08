@@ -476,14 +476,25 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 }
 
 void sendParticles(std::vector<boost::shared_ptr<tcp::socket>> clients) {
-	std::cout << "i'm in send particles" << std::endl;
+	std::cout << "I'm in sendParticles" << std::endl;
 	try {
 		std::string particleMessage = serializeParticles(particles);
 
 		for (auto& clientPtr : clients) {
-			boost::asio::write(*clientPtr, boost::asio::buffer(particleMessage));
+			// Asynchronously write the particle message to each client socket
+			boost::asio::async_write(*clientPtr, boost::asio::buffer(particleMessage),
+				[clientPtr](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+					if (!error) {
+						// Write completed successfully
+						std::cout << "Particle message sent to client" << std::endl;
+					}
+					else {
+						// Handle error
+						std::cerr << "Error in async_write: " << error.message() << std::endl;
+					}
+				}
+			);
 		}
-
 	}
 	catch (std::exception& e) {
 		std::cerr << "Exception in server: " << e.what() << "\n";
@@ -561,7 +572,7 @@ void handleClient(boost::shared_ptr<tcp::socket> socket) {
 			}
 			else {
 				message = std::string(buffer.data(), length);
-				//std::cout << message << std::endl;
+				std::cout << message << std::endl;
 				std::istringstream iss(message);
 				int id = 0;
 				float x, y = 0.0f;
@@ -638,6 +649,7 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 
 			boost::shared_ptr<tcp::socket> socketPtr(new tcp::socket(io_context));
 			acceptor.accept(*socketPtr);
+			socketPtr->non_blocking(true);
 
 			std::cout << "New client connected." << std::endl;
 			//unique mutex lock
@@ -657,8 +669,8 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 			//boost::asio::write(clients.back(), boost::asio::buffer(IDMsg));
 			std::string id_message = std::to_string(clientCtr);
 			boost::asio::write(*(clients[clientCtr - 1]), boost::asio::buffer(id_message));
-			sendParticles(clients);
-			sendSprites(clients);
+			/*sendParticles(clients);
+			sendSprites(clients);*/
 
 			// Create a copy of the client socket object
 			/*tcp::socket clientCopy(io_context);
