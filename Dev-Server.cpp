@@ -186,7 +186,7 @@ std::vector<Particle> particles;
 
 class Sprite {
 public:
-	int clientID;
+	int id;
 	float x, y;
 	float speed;
 	GLuint textureID;
@@ -210,8 +210,7 @@ public:
 
 	json toJSON() const {
 		json j;
-    
-		j["clientID"] = clientID;
+		j["id"] = id;
 		j["x"] = x;
 		j["y"] = y;
 		j["speed"] = speed;
@@ -383,32 +382,6 @@ json particleToJSON(Particle particle) {
 	return j;
 }
 
-std::string serializeSprites(const std::vector<Sprite>& sprites) {
-	std::vector<int> xValues;
-	std::vector<int> yValues;
-	std::vector<int> speedValues;
-
-	for (const auto& sprite : sprites) {
-		xValues.push_back(sprite.x);
-		yValues.push_back(sprite.y);
-		speedValues.push_back(sprite.speed);
-	}
-
-	json j;
-	j["x"] = xValues;
-	j["y"] = yValues;
-	j["speed"] = speedValues;
-	j["message_type"] = "Sprites";
-
-	std::string serializedSprites = j.dump();
-
-	// Insert | at end of message
-	serializedSprites.push_back('|');
-
-	return serializedSprites;
-
-}
-
 // Returns the message to be sent to the clients
 std::string serializeParticles(const std::vector<Particle>& particles) {
 	std::vector<int> xValues;
@@ -428,7 +401,6 @@ std::string serializeParticles(const std::vector<Particle>& particles) {
 	j["y"] = yValues;
 	j["angle"] = angleValues;
 	j["velocity"] = velocityValues;
-	j["message_type"] = "Particles";
 
 	std::string serializedParticles = j.dump();
 
@@ -455,20 +427,6 @@ void sendParticles(std::vector<tcp::socket>& clients) {
 	}
 }
 
-void sendSprites(std::vector<tcp::socket>& clients) {
-	try {
-		std::string spriteMessage = serializeSprites(clientSprites);
-
-		for (auto& client : clients) {
-			boost::asio::write(client, boost::asio::buffer(spriteMessage));
-		}
-
-	}
-	catch (std::exception& e) {
-		std::cerr << "Exception in server: " << e.what() << "\n";
-	}
-}	
-
 void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 	boost::asio::io_context io_context;
 	boost::asio::steady_timer timer(io_context);
@@ -483,9 +441,6 @@ void runPeriodicSend(std::vector<boost::asio::ip::tcp::socket>& clients) {
 			if (!error) {
 				// Send particles to clients
 				sendParticles(std::ref(clients));
-				// Send sprites to clients
-				sendSprites(std::ref(clients));
-
 				// Reschedule the timer
 				periodicTask();
 			}
