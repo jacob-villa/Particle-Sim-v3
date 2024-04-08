@@ -658,7 +658,7 @@ void runServer(std::vector<boost::shared_ptr<tcp::socket>> clients) {
 			std::string id_message = std::to_string(clientCtr);
 			boost::asio::write(*(clients[clientCtr - 1]), boost::asio::buffer(id_message));
 			sendParticles(clients);
-			sendSprites(clients);
+			//sendSprites(clients);
 
 			// Create a copy of the client socket object
 			/*tcp::socket clientCopy(io_context);
@@ -678,6 +678,10 @@ int main(int argc, char *argv) {
 
 	std::vector<boost::shared_ptr<tcp::socket>> clients;
 	std::vector<std::thread> clientThreads;
+
+	for (int i = 0; i < 30; ++i) {
+		SpawnRandomParticle();
+	}
 
 	//std::thread serverThread(runServer, std::ref(clients), std::ref(clientThreads));
 	std::thread serverThread(runServer, std::ref(clients));
