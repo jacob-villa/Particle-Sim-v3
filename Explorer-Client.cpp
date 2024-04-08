@@ -182,9 +182,8 @@ public:
 	}
 };
 
+static std::vector<Particle> particles;
 
-
-std::vector<Particle> particles;
 
 class Sprite {
 public:
@@ -235,9 +234,10 @@ public:
 	}
 };
 
-std::vector<Sprite> sprites;
+static std::vector<Sprite> sprites;
 
-Sprite* explorerSprite = nullptr; // Global pointer to the explorer sprite
+static Sprite* explorerSprite = nullptr; // Global pointer to the explorer sprite
+
 
 static void SpawnRandomParticle() {
 	std::random_device rd;
@@ -400,21 +400,24 @@ public:
 		boost::asio::connect(*socketPtr, endpoints);
 	}
 
-	void sendPosition(float x, float y) {
-		std::string message = std::to_string(spriteID) + " " + std::to_string(x) + " " + std::to_string(y) + "\n";
+	void sendPosition() {
+		std::string message = std::to_string(spriteID) + " " + std::to_string(explorerSprite->x) + " " + std::to_string(explorerSprite->y) + "\n";
 		boost::asio::async_write(*socketPtr, boost::asio::buffer(message),
-			[](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+			[this](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
 				std::cout << "before error checking" << std::endl;
 				if (!error) {
 					// Write completed successfully
 					std::cout << "pos sent to server" << std::endl;
+					Sleep(1000);
+					this->sendPosition();
 				}
 				else {
 					// Handle error
-					std::cerr << "Error in sendPosition: " << error.message() << std::endl;
+					std::cerr << "Error in async_write: " << error.message() << std::endl;
 				}
 			}
 		);
+
 		/*boost::asio::write(*socketPtr, boost::asio::buffer(message));
 		std::cout << "Sent position: " << message << std::endl;*/
 	}
@@ -735,6 +738,9 @@ int main(int argc, char* argv) {
 
 	std::string loadImageMessage = "";
 
+
+	networkClient.sendPosition();
+
 	while (!glfwWindowShouldClose(window)) {
 		double currentTime = glfwGetTime();
 
@@ -983,7 +989,7 @@ int main(int argc, char* argv) {
 			if (keyS) explorerSprite->Move(0, moveSpeed); // Move down
 			if (keyD) explorerSprite->Move(moveSpeed, 0); // Move right
 
-			networkClient.sendPosition(explorerSprite->x, explorerSprite->y);
+			
 		}
 
 		ImGui::PopStyleColor(4);
